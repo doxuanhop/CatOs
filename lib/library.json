@@ -1,0 +1,16 @@
+{
+    "name": "MyJoystick",
+    "version": "1.0.0",
+    "keywords": "joystick, input, control",
+    "description": "Simple joystick library for ESP32",
+    "authors": {
+      "name": "CatDevCode",
+      "url": "https://example.com"
+    },
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/your-repo/myjoystick.git"
+    },
+    "frameworks": "arduino",
+    "platforms": "espressif32"
+  }
