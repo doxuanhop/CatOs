@@ -1902,6 +1902,62 @@ void timer_oled() {
       }
   }
 }
+void mini_apps_menu() {
+  const char* mini_apps[] = {
+    "Кубик",
+    "Змейка",
+    "Ардуино дино",
+    "Тетрис",
+    "Назад"
+  };
+  const uint8_t mini_apps_count = sizeof(mini_apps)/sizeof(mini_apps[0]);
+  int8_t mini_apps_ptr = 0;
+  const uint8_t header_height = 16; // Высота заголовка с линией
+
+  ui_rama("Мини приложения", true, true, true);
+  
+  while(true) {
+    // Очищаем только область меню (начиная с 3 строки)
+    oled.clear(0, header_height, 127, 63);
+    
+    // Рисуем только первый видимый пункт
+    oled.setCursor(2, header_height/8 + 0); // 3 строка (16px)
+    oled.print(mini_apps_ptr == 0 ? ">" : " ");
+    oled.print(mini_apps[0]);
+
+    // Рисуем остальные пункты если есть
+    if(mini_apps_count > 1) {
+      for(uint8_t i = 1; i < mini_apps_count; i++) {
+        oled.setCursor(2, header_height/8 + i); // Следующие строки
+        oled.print(mini_apps_ptr == i ? ">" : " ");
+        oled.print(mini_apps[i]);
+      }
+    }
+    
+    oled.update();
+
+    buttons_tick();
+
+    if(up.isClick() && mini_apps_ptr > 0) {
+      mini_apps_ptr--;
+    }
+    if(down.isClick() && mini_apps_ptr < mini_apps_count - 1) {
+      mini_apps_ptr++;
+    }
+
+    if(ok.isClick()) {
+      switch(mini_apps_ptr) {
+        case 0: dice_random(); break;
+        case 1: snake(); break;
+        case 2: PlayDinosaurGame(); break;
+        case 3: start_tetris_r(); break;
+        case 4: exit(); resetButtons(); return;
+      }
+      // Перерисовываем интерфейс после возврата
+      ui_rama("Мини приложения", true, true, true);
+    }
+  }
+}
 void loop() {
     static uint32_t timer = 0;
     buttons_tick();
@@ -1934,11 +1990,11 @@ void loop() {
     }
     if (ok.isClick()) {   // Нажатие на ОК - переход в пункт меню
       switch (pointer) {  // По номеру указателей располагаем вложенные функции (можно вложенные меню)
-        case 0: start_tetris_r(); break;  // По нажатию на ОК при наведении на 0й пункт вызвать функцию
-        case 1: snake(); break;
+        case 0: oled.clear(); mini_apps_menu(); break;  // По нажатию на ОК при наведении на 0й пункт вызвать функцию
+        case 1: break;
         case 2: ShowFilesLittleFS(); break;
         case 3: power_high(); break;
-        case 4: PlayDinosaurGame(); break;
+        case 4: break;
         case 5: create_settings(); break;
         case 6: stopwatch(); break;
         case 7: timer_oled(); break;
