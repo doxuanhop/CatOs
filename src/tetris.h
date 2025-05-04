@@ -5,7 +5,6 @@
 #define GAME_SPEED        350           // Скорость  (меньше - быстрее)
 #define CALCUL_TYPE       int64_t       // Тип переменной зачений в калькуляторе
 uint8_t button_rev;
-GTimer_ms gameTimer(GAME_SPEED); // Таймер игр
 #define T_SEGMENT 4            // Сегмент тетриса
 #define MAX_WIDTH 64
 #define MAX_HEIGHT 128

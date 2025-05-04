@@ -34,9 +34,9 @@ const char* password = "123456789"; //  пароль
 #define OK_PIN 22
 //----------------------------
 // калькулятор
-#define CALCUL_TYPE       int64_t       // Тип переменной зачений в калькуляторе
+#define CALCUL_TYPE int64_t      // Тип переменной зачений в калькуляторе
 CALCUL_TYPE a, b, result;
-uint8_t thisval, sign;  // 0-+ 1-- 2-* 3-/ 4-^
+uint8_t thisval, sign;           // 0-+ 1-- 2-* 3-/ 4-^
 bool isdraw;
 //----------------------
 // ардуино дино
@@ -70,6 +70,7 @@ GButton ok(OK_PIN);
 GyverDBFile db(&LittleFS, "/data.db");
 SettingsGyver sett("CatOS", &db);
 Random16 rnd;
+GTimer_ms gameTimer(GAME_SPEED); // Таймер игр
 //отрисовка батареи
 float mapFloat(float x, float in_min, float in_max, float out_min, float out_max) {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
@@ -1697,6 +1698,210 @@ void dice_random() {
     }
   }
 }
+void stopwatch() {
+  bool running = false;
+  unsigned long startTime = 0;
+  unsigned long elapsedTime = 0;
+  unsigned long lastDraw = 0;
+  
+  resetButtons();
+  oled.clear();
+  ui_rama("Секундомер", true, true, true);
+
+  while(1) {
+      buttons_tick();
+      
+      // Управление
+      if(ok.isClick()) {
+          running = !running;
+          if(running) startTime = millis() - elapsedTime;
+      }
+      
+      if(up.isHold()) { // Сброс при удержании
+          elapsedTime = 0;
+          running = false;
+      }
+      
+      // Обновление времени
+      if(running) {
+          elapsedTime = millis() - startTime;
+      }
+      
+      // Отрисовка каждые 50 мс
+      if(millis() - lastDraw > 50) {
+          lastDraw = millis();
+          oled.setCursor(0, 3);
+          oled.setScale(2);
+          
+          unsigned long hours = elapsedTime / 3600000;
+          unsigned long mins = (elapsedTime / 60000) % 60;
+          unsigned long secs = (elapsedTime / 1000) % 60;
+          unsigned long ms = elapsedTime % 1000;
+          
+          oled.print(hours < 10 ? "0" : ""); oled.print(hours);
+          oled.print(":");
+          oled.print(mins < 10 ? "0" : ""); oled.print(mins);
+          oled.print(":");
+          oled.print(secs < 10 ? "0" : ""); oled.print(secs);
+          oled.print(".");
+          oled.print(ms / 100);
+          
+          oled.setScale(1);
+          oled.setCursor(0, 7);
+          oled.print(running ? "РАБОТА" : "ПАУЗА ");
+          oled.print("  СБРОС->");
+          oled.update();
+      }
+      
+      // Выход по долгому нажатию OK
+      if(ok.isHold()) {
+          exit();
+          return;
+      }
+  }
+}
+void timer_oled() {
+  enum {SET_HOURS, SET_MINS, SET_SECS, RUNNING, ALARM} state = SET_HOURS;
+  uint8_t hours = 0;
+  uint8_t mins = 0;
+  uint8_t secs = 0;
+  unsigned long targetTime = 0;
+  
+  resetButtons();
+  oled.clear();
+  ui_rama("Таймер", true, true, true);
+
+  while(1) {
+      buttons_tick();
+      
+      switch(state) {
+          case SET_HOURS:
+              // Регулировка часов
+              if(up.isClick()) hours = (hours + 1) % 24;
+              if(down.isClick()) hours = (hours > 0) ? hours - 1 : 23;
+              
+              // Отображение
+              oled.setCursor(0, 3);
+              oled.setScale(2);
+              oled.print(hours < 10 ? "0" : ""); oled.print(hours);
+              oled.print(":00:00");
+              
+              // Переход к минутам
+              if(ok.isClick()) state = SET_MINS;
+              break;
+              
+          case SET_MINS:
+              // Регулировка минут
+              if(up.isClick()) mins = (mins + 1) % 60;
+              if(down.isClick()) mins = (mins > 0) ? mins - 1 : 59;
+              
+              // Отображение
+              oled.setCursor(0, 3);
+              oled.setScale(2);
+              oled.print(hours < 10 ? "0" : ""); oled.print(hours);
+              oled.print(":");
+              oled.print(mins < 10 ? "0" : ""); oled.print(mins);
+              oled.print(":00");
+              
+              // Переход к секундам
+              if(ok.isClick()) state = SET_SECS;
+              break;
+              
+          case SET_SECS:
+              // Регулировка секунд
+              if(up.isClick()) secs = (secs + 1) % 60;
+              if(down.isClick()) secs = (secs > 0) ? secs - 1 : 59;
+              
+              // Отображение
+              oled.setCursor(0, 3);
+              oled.setScale(2);
+              oled.print(hours < 10 ? "0" : ""); oled.print(hours);
+              oled.print(":");
+              oled.print(mins < 10 ? "0" : ""); oled.print(mins);
+              oled.print(":");
+              oled.print(secs < 10 ? "0" : ""); oled.print(secs);
+              
+              // Старт таймера
+              if(ok.isClick()) {
+                  targetTime = millis() + 
+                      (hours * 3600000UL) + 
+                      (mins * 60000UL) + 
+                      (secs * 1000UL);
+                  state = RUNNING;
+              }
+              break;
+              
+          case RUNNING: {
+              unsigned long remaining = targetTime - millis();
+              if(remaining > 86400000UL) { // Переполнение
+                  state = ALARM;
+                  break;
+              }
+              
+              if(remaining <= 0) {
+                  ui_rama("Таймер", true, true, true);
+                  oled.clear();
+                  state = ALARM;
+                  break;
+              }
+              
+              // Отображение оставшегося времени
+              uint8_t rem_h = remaining / 3600000;
+              remaining %= 3600000;
+              uint8_t rem_m = remaining / 60000;
+              remaining %= 60000;
+              uint8_t rem_s = remaining / 1000;
+              
+              oled.setCursor(0, 3);
+              oled.setScale(2);
+              oled.print(rem_h < 10 ? "0" : ""); oled.print(rem_h);
+              oled.print(":");
+              oled.print(rem_m < 10 ? "0" : ""); oled.print(rem_m);
+              oled.print(":");
+              oled.print(rem_s < 10 ? "0" : ""); oled.print(rem_s);
+              
+              // Отмена таймера
+              if(ok.isClick()) {
+                  state = SET_HOURS;
+                  hours = mins = secs = 0;
+              }
+              break;
+          }
+              
+          case ALARM:
+              // Мигающий сигнал
+              oled.invertDisplay(millis() % 500 < 250);
+              oled.setCursor(0, 3);
+              oled.setScale(2);
+              oled.print("   ВРЕМЯ!");
+              
+              // Отключение сигнала
+              if(ok.isClick()) {
+                  oled.invertDisplay(false);
+                  state = SET_HOURS;
+                  hours = mins = secs = 0;
+              }
+              break;
+      }
+      
+      oled.setScale(1);
+      oled.setCursor(0, 7);
+      switch(state) {
+          case SET_HOURS: oled.print("Уст. часы   OK->"); break;
+          case SET_MINS:  oled.print("Уст. минуты OK->"); break;
+          case SET_SECS:  oled.print("Уст. секундыСТАРТ"); break;
+          case RUNNING:   oled.print("  ОСТАНОВКА ->OK"); break;
+          case ALARM:     oled.print("   ОК - СБРОС   "); break;
+      }
+      oled.update();
+      
+      // Выход по долгому нажатию OK
+      if(ok.isHold() && state != ALARM) {
+          exit();
+          return;
+      }
+  }
+}
 void loop() {
     static uint32_t timer = 0;
     buttons_tick();
@@ -1735,8 +1940,8 @@ void loop() {
         case 3: power_high(); break;
         case 4: PlayDinosaurGame(); break;
         case 5: create_settings(); break;
-        case 6: dice_random(); break;
-        case 7: calcul(); break;
+        case 6: stopwatch(); break;
+        case 7: timer_oled(); break;
           // И все остальные
       }
     }
