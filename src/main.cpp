@@ -5,10 +5,6 @@
 
 #define OLED_SPI_SPEED 8000000ul // скорость(макс)
 //------------------------
-// ap
-const char* ssid     = "CatOs";     //  имя сети
-const char* password = "123456789"; //  пароль
-//-----------
 // библиотеки и переменные
 #include <Arduino.h>        // стандартная либа
 #include <GyverOLED.h>      // либа дисплея
@@ -23,6 +19,9 @@ const char* password = "123456789"; //  пароль
 #include "bitmaps_oled.h"   // битмапы
 #include "menu_oled.h"      // переменные для меню
 // ------------------
+bool alert_f;               // показ ошибки в вебморде
+bool wifiConnected = false;
+bool apStarted = false;
 // пины
 #define FREE_PIN 25 
 #define batteryPin 34
@@ -66,7 +65,7 @@ GButton up(UP_PIN);
 GButton down(DOWN_PIN);
 GButton right(RIGHT_PIN);
 GButton left(LEFT_PIN);
-GButton ok(OK_PIN);                                     
+GButton ok(OK_PIN);                                  
 GyverDBFile db(&LittleFS, "/data.db");
 SettingsGyver sett("CatOS", &db);
 Random16 rnd;
@@ -125,15 +124,165 @@ void ui_rama(const char* name, bool draw_b, bool draw_l, bool cleardisplay) {
   oled.update();
 }
 //------------------------
+String constrainString(String str, uint8_t minLen, uint8_t maxLen) {
+  if (str.length() < minLen) {
+      return String("12345678"); // Возвращаем минимально допустимый
+  }
+  if (str.length() > maxLen) {
+      str = str.substring(0, maxLen);
+  }
+  return str;
+}
 // кей
 DB_KEYS(
   kk,
-  input
+  input,
+  OLED_BRIGHTNESS,
+  AP_SSID,
+  AP_PASS,
+  wifi_enabled,
+  wifi_ssid,
+  wifi_pass,
+  apply
 );
+// В функции обновления яркости:
+void update(sets::Updater& upd) {
+  static uint8_t lastBrightness = db[kk::OLED_BRIGHTNESS].toInt();
+  if(lastBrightness != db[kk::OLED_BRIGHTNESS].toInt()) {
+      lastBrightness = db[kk::OLED_BRIGHTNESS].toInt();
+      oled.setContrast(lastBrightness);
+      db.update(); // Сохраняем изменение
+  }
+  if (alert_f) {
+    alert_f = false;
+    upd.alert("Пароль должен быть не менее 8 символов!");
+  }
+}
+bool connectToWiFi() {
+  String ssid = db[kk::wifi_ssid];
+  String pass = db[kk::wifi_pass];
+  WiFi.mode(WIFI_AP_STA);
+  if(ssid.isEmpty()) {
+      Serial.println("WiFi SSID not configured!");
+      return false;  // Return false if SSID is empty
+  }
+ 
+  // Сброс предыдущих статусов
+  wifiConnected = false;
+  apStarted = false;
+  WiFi.begin(ssid, pass);
+  oled.autoPrintln(true);
+  oled.clear();
+  oled.home();
+  oled.print("Подключение к");
+  oled.setCursor(0, 2);
+  oled.print(ssid);
+  oled.setCursor(0, 3);
+  oled.print("Статус:");
+  oled.update();
+  // Ожидание подключения с визуализацией
+  uint32_t startTime = millis();
+  // Прерываем ожидание если подключились
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+    oled.print(".");
+    oled.update();
+    if (millis() - startTime > 10000) { // 10 second timeout
+      oled.print("Не подключено! Запуск AP");
+      oled.update();
+      delay(1000);
+      oled.autoPrintln(false);
+      return false; // Return false if connection fails
+    }
+  }
+  oled.autoPrintln(false);
+  return true; // Return true if connected successfully
+}
+ 
+
+
+void startAP() {
+  // Используем AP_SSID и AP_PASS вместо ap_ssid/ap_pass
+  String ssid = db[kk::AP_SSID];
+  String pass = db[kk::AP_PASS];
+ 
+  if (ssid.length() == 0) {
+      ssid = "CatOs";
+      db[kk::AP_SSID] = ssid; // Исправлено на AP_SSID
+  }
+  if (pass.length() < 8) {
+      pass = "12345678";
+      db[kk::AP_PASS] = pass; // Исправлено на AP_PASS
+  }
+  WiFi.softAP(
+    db[kk::AP_SSID].toString().c_str(),
+    db[kk::AP_PASS].toString().c_str()
+  );
+ 
+}
+void stopWiFi() {
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_OFF);
+  Serial.println("WiFi completely stopped");
+}
 //----------
-// билдер! Тут строится наше окно настроек
 void build(sets::Builder& b) {
-  b.Input(kk::input, "My input");
+  // Секция настроек дисплея
+  {
+      sets::Group g(b, "Дисплей");
+      b.Slider(kk::OLED_BRIGHTNESS, "Яркость дисплея", 0, 255, 1, "", nullptr, sets::Colors::Blue);
+  }
+
+  // Секция WiFi
+  {
+      sets::Group g(b, "WiFi");
+      // Переключатель WiFi с привязкой к значению из БД
+      bool wifiEnabled = db[kk::wifi_enabled].toInt();
+      b.Switch(kk::wifi_enabled, "WiFi подключение", &wifiEnabled);
+      b.Input(kk::wifi_ssid, "SSID WiFi");
+      b.Pass(kk::wifi_pass, "Пароль WiFi");
+  }
+
+  // Секция точки доступа
+  {
+      sets::Group g(b, "Точка доступа");
+      b.Input(kk::AP_SSID, "SSID точки");
+      b.Pass(kk::AP_PASS, "Пароль точки");
+  }
+
+  // Секция управления
+  {
+      sets::Group g(b, "Управление");
+      if(b.Button("Применить сетевые настройки")) {
+        if (db[kk::AP_PASS].toString().length() >= 8) {
+            db.update();
+            sett.reload(true);
+        } else {
+            alert_f = true;  // Устанавливаем флаг
+            b.reload();      // Форсируем обновление
+        }
+    }
+  }
+}
+
+// Новая функция инициализации настроек
+void initSettings() {
+  // Существующие настройки
+  if (!db.has(kk::OLED_BRIGHTNESS)) db.init(kk::OLED_BRIGHTNESS, 128);
+  if (!db.has(kk::AP_SSID)) {
+    db.init(kk::AP_SSID, "CatOs");
+  }
+  if (!db.has(kk::AP_PASS)) {
+      db.init(kk::AP_PASS, "12345678");
+  }
+  if (!db.has(kk::wifi_enabled)) {
+      db.init(kk::wifi_enabled, 0);
+  }
+  if (!db.has(kk::wifi_ssid)) db.init(kk::wifi_ssid, "");
+  if (!db.has(kk::wifi_pass)) db.init(kk::wifi_pass, "");
+  
+  db.update();
 }
 void drawStaticMenu() {
   oled.clear();
@@ -558,7 +707,6 @@ void setup() {
     Serial.begin(115200);
     oled.init(); 
     oled.clear(); 
-    oled.setContrast(255);
     oled.setScale(1);
     Wire.setClock(800000L);
     ok.tick();
@@ -568,6 +716,13 @@ void setup() {
     #else
       LittleFS.begin();
     #endif
+    db.begin();  // Читаем данные из файла
+    
+    // Инициализируем ключи с проверкой значений
+    initSettings();
+
+    // Применяем настройки
+    oled.setContrast(db[kk::OLED_BRIGHTNESS].toInt());
     // Если во время показа логотипа нажали OK - войти в сервисный режим
     if (draw_logo()) {
       servmode();
@@ -1027,42 +1182,67 @@ void test(void) {
   }
 }
 void create_settings() {
-    Serial.println();
-    WiFi.mode(WIFI_AP);
-    WiFi.softAP(ssid, password);
-    Serial.println();
-    Serial.print("AP IP: ");
-    Serial.println(WiFi.softAPIP());  // вместо WiFi.localIP()
-    oled.clear();
-    ui_rama("AP моде", true, true, false);
-    oled.setCursor(0,2);
-    oled.print("AP:");
-    oled.print(ssid);
-    oled.setCursor(0,3);
-    oled.print("Пароль:");
-    oled.print(password);
-    oled.setCursor(0,4);
-    oled.print("IP: ");
-    oled.print(WiFi.softAPIP());
-    oled.update();
-
-
-    sett.begin();
-    sett.onBuild(build);
+  String ssid = db[kk::wifi_ssid];
+  bool wifi_connected = false;
   
-    // запуск и инициализация полей БД
-    db.begin();
-    db.init(kk::input, 0);
-    while (true) {
-      sett.tick();
-      buttons_tick();
-      if (ok.isClick()) {
-        ESP.restart();
+    // Замените старый код подключения WiFi на:
+    if(db[kk::wifi_enabled].toInt()) {
+      connectToWiFi();
+      if(ssid.isEmpty()) {
+        Serial.println("WiFi SSID not configured!");
+        startAP();
       }
-    }
+      if(WiFi.status() == WL_CONNECTED) {
+          // Успешное подключение
+          Serial.print("Connected! IP: ");
+          Serial.println(WiFi.localIP());
+          wifiConnected = true;
+      } else {
+          // Не удалось подключиться - запуск AP
+          startAP();
+      }
+  } else {
+      // WiFi отключен в настройках
+      startAP();
+  }
+ 
+  // Основной интерфейс настроек
+  oled.clear();
+  ui_rama("WiFi веб", true, true, true);
+  oled.setCursor(0, 2);
+  if (wifiConnected) {
+    oled.print("IP:");
+    oled.print(WiFi.localIP());
+    oled.setCursor(0, 3);
+    oled.print("Сеть: ");
+    oled.print(ssid);
+  } else {
+    oled.setCursor(0, 2);
+    oled.print("IP: " + WiFi.softAPIP().toString());
+    oled.setCursor(0, 3);
+    oled.print("Сеть: " + db[kk::AP_SSID].toString());
+    oled.setCursor(0, 4);
+    oled.print("Пароль: " + db[kk::AP_PASS].toString());
+    oled.update();
+  }
+  oled.setCursor(0, 6);
+  oled.print("OK - Restart");
+  oled.update();
+ 
+  // Запуск веб-сервера
+  sett.begin();
+  sett.onBuild(build);
+ 
+  while(true) {
+      sett.tick();
+      delay(10);
+      buttons_tick();
+      if(ok.isClick()) {
+          stopWiFi(); // Выключаем WiFi при выходе
+          ESP.restart();
+      }
+  }
 }
-
-
 boolean checkButtons() {
   if (up.isClick()) button_rev = 3;
   if (down.isClick()) button_rev = 1;
@@ -1958,6 +2138,111 @@ void mini_apps_menu() {
     }
   }
 }
+// Настройки сети
+void networkSettings() {
+  String ssid = db[kk::AP_SSID].toString();
+  String pass = db[kk::AP_PASS].toString();
+  
+  while(true) {
+      oled.clear();
+      oled.setCursor(0, 0);
+      oled.print("Сеть: ");
+      oled.print(ssid);
+      oled.setCursor(0, 2);
+      oled.print("Пароль: ");
+      oled.print(pass);
+      oled.setCursor(0, 4);
+      oled.print("OK - выход");
+      oled.update();
+
+      buttons_tick();
+      
+      if(ok.isClick()) {
+          return;
+      }
+  }
+}
+// Регулировка яркости
+void brightnessAdjust() {
+  int brightness = db[kk::OLED_BRIGHTNESS].toInt();
+  
+  while(true) {
+      oled.clear();
+      oled.setCursor(0, 0);
+      oled.print("Яркость: ");
+      oled.print(brightness);
+      oled.setCursor(0, 2);
+      oled.print("OK - сохранить");
+      oled.update();
+
+      buttons_tick();
+      
+      if(up.isClick()) brightness = constrain(brightness + 10, 0, 255); oled.setContrast(brightness);
+      if(down.isClick()) brightness = constrain(brightness - 10, 0, 255); oled.setContrast(brightness);
+      if(ok.isClick()) {
+          db[kk::OLED_BRIGHTNESS] = brightness;
+          oled.setContrast(brightness);
+          db[kk::OLED_BRIGHTNESS] = brightness;
+          db.update(); 
+          return;
+      }
+      if(ok.isHold()) return;
+  }
+}
+
+
+void settingsMenu() {
+  const char* settings_items[] = {
+    "Яркость дисплея",
+    "Сеть",
+    "Назад"
+};
+  const uint8_t settings_apps_count = sizeof(settings_items)/sizeof(settings_items[0]);
+  int8_t settings_apps_ptr = 0;
+  const uint8_t header_height = 16; // Высота заголовка с линией
+
+  ui_rama("Настройки", true, true, true);
+  
+  while(true) {
+    // Очищаем только область меню (начиная с 3 строки)
+    oled.clear(0, header_height, 127, 63);
+    
+    // Рисуем только первый видимый пункт
+    oled.setCursor(2, header_height/8 + 0); // 3 строка (16px)
+    oled.print(settings_apps_ptr == 0 ? ">" : " ");
+    oled.print(settings_items[0]);
+
+    // Рисуем остальные пункты если есть
+    if(settings_apps_count > 1) {
+      for(uint8_t i = 1; i < settings_apps_count; i++) {
+        oled.setCursor(2, header_height/8 + i); // Следующие строки
+        oled.print(settings_apps_ptr == i ? ">" : " ");
+        oled.print(settings_items[i]);
+      }
+    }
+    
+    oled.update();
+
+    buttons_tick();
+
+    if(up.isClick() && settings_apps_ptr > 0) {
+      settings_apps_ptr--;
+    }
+    if(down.isClick() && settings_apps_ptr < settings_apps_count - 1) {
+      settings_apps_ptr++;
+    }
+
+    if(ok.isClick()) {
+      switch(settings_apps_ptr) {
+        case 0: brightnessAdjust(); break;
+        case 1: networkSettings(); break;
+        case 2: exit(); resetButtons(); return;
+      }
+      // Перерисовываем интерфейс после возврата
+      ui_rama("Настройки", true, true, true);
+    }
+  }
+}
 void loop() {
     static uint32_t timer = 0;
     buttons_tick();
@@ -1991,10 +2276,10 @@ void loop() {
     if (ok.isClick()) {   // Нажатие на ОК - переход в пункт меню
       switch (pointer) {  // По номеру указателей располагаем вложенные функции (можно вложенные меню)
         case 0: oled.clear(); mini_apps_menu(); break;  // По нажатию на ОК при наведении на 0й пункт вызвать функцию
-        case 1: break;
+        case 1: settingsMenu(); break;
         case 2: ShowFilesLittleFS(); break;
         case 3: power_high(); break;
-        case 4: break;
+        case 4:  break;
         case 5: create_settings(); break;
         case 6: stopwatch(); break;
         case 7: timer_oled(); break;
