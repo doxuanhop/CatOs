@@ -2279,7 +2279,7 @@ void loop() {
         case 1: settingsMenu(); break;
         case 2: ShowFilesLittleFS(); break;
         case 3: power_high(); break;
-        case 4:  break;
+        case 4: calcul(); break;
         case 5: create_settings(); break;
         case 6: stopwatch(); break;
         case 7: timer_oled(); break;
