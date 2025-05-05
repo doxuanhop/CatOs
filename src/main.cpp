@@ -74,7 +74,18 @@ GTimer_ms gameTimer(GAME_SPEED); // Таймер игр
 float mapFloat(float x, float in_min, float in_max, float out_min, float out_max) {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
-
+// кей
+DB_KEYS(
+  kk,
+  input,
+  OLED_BRIGHTNESS,
+  AP_SSID,
+  AP_PASS,
+  wifi_enabled,
+  wifi_ssid,
+  wifi_pass,
+  apply
+);
 int getBattery() {
   int adcValue = analogRead(BATTERY_PIN);
   batteryVoltage = (adcValue / (pow(2, ADC_RESOLUTION) - 1)) * REF_VOLTAGE * VOLTAGE_DIVIDER;
@@ -93,7 +104,10 @@ void drawbattery() {
   int battery = getBattery(); // Обновляем заряд
   if (battery <= 10){
     oled.setContrast(50);
+  } else {
+    oled.setContrast(db[kk::OLED_BRIGHTNESS].toInt());
   }
+
   oled.clear(110, 0, 127, 6); 
   
   // Выбираем битмап в зависимости от уровня заряда
@@ -136,18 +150,6 @@ String constrainString(String str, uint8_t minLen, uint8_t maxLen) {
   }
   return str;
 }
-// кей
-DB_KEYS(
-  kk,
-  input,
-  OLED_BRIGHTNESS,
-  AP_SSID,
-  AP_PASS,
-  wifi_enabled,
-  wifi_ssid,
-  wifi_pass,
-  apply
-);
 // В функции обновления яркости:
 void update(sets::Updater& upd) {
   static uint8_t lastBrightness = db[kk::OLED_BRIGHTNESS].toInt();
@@ -439,7 +441,6 @@ void testBattery() {
 
     static uint32_t batteryTimer = millis();
     buttons_tick();
-
     if (millis() - batteryTimer > 5000) {
         batteryTimer = millis();
         drawbattery();
@@ -1231,7 +1232,7 @@ void create_settings() {
   oled.setCursor(0, 6);
   oled.print("OK - Restart");
   oled.update();
- 
+  sett.setVersion("0.1 dev");
   // Запуск веб-сервера
   sett.begin();
   sett.onBuild(build);
@@ -1241,7 +1242,6 @@ void create_settings() {
       delay(10);
       buttons_tick();
       if(ok.isClick()) {
-          stopWiFi(); // Выключаем WiFi при выходе
           ESP.restart();
       }
   }
