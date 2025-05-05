@@ -91,6 +91,9 @@ int getVoltage() {
 }
 void drawbattery() {
   int battery = getBattery(); // Обновляем заряд
+  if (battery <= 10){
+    oled.setContrast(50);
+  }
   oled.clear(110, 0, 127, 6); 
   
   // Выбираем битмап в зависимости от уровня заряда
