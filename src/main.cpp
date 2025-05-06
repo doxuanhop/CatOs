@@ -410,7 +410,7 @@ bool draw_logo() {
 //}
 void testBattery() {
   oled.clear();
-  drawbattery();
+  ui_rama("Версия 0.1 Dev", true, true, true);
   while (true) {
     int adcValue = analogRead(BATTERY_PIN);
     batteryVoltage = (adcValue / (pow(2, ADC_RESOLUTION) - 1)) * REF_VOLTAGE * VOLTAGE_DIVIDER;
@@ -418,24 +418,24 @@ void testBattery() {
     // 2. Расчет процента заряда (с ограничением 0-100%)
     batteryPercentage = mapFloat(batteryVoltage, BAT_MIN_VOLTAGE, BAT_MAX_VOLTAGE, 0, 100);
     batteryPercentage = constrain(batteryPercentage, 0, 100);
-    oled.setCursor(0,0);
+    oled.setCursor(0,2);
     oled.print("V ~: ");
     oled.print(batteryVoltage);
     
-    oled.setCursor(0,1);
+    oled.setCursor(0,3);
     oled.print("Уровень заряда ~: ");
     oled.print(batteryPercentage);
     oled.print("%");
     
-    oled.setCursor(0,2);                      // Объединенная строка
+    oled.setCursor(0,4);
     oled.print("Пин: ");
     oled.print(BATTERY_PIN);
     
-    oled.setCursor(0,3);
+    oled.setCursor(0,5);
     oled.print("Мин V: ");
     oled.print(BAT_MIN_VOLTAGE);
     
-    oled.setCursor(0,4);
+    oled.setCursor(0,6);
     oled.print("Макс V: ");
     oled.print(BAT_MAX_VOLTAGE);
 
@@ -451,171 +451,6 @@ void testBattery() {
       return;
     }
   }
-}
-void party() {
-  oled.clear();
-  uint32_t tmr = millis();
-  oled.setScale(3);
-  oled.setCursor(10, 2);
-  oled.print("ПЕННАЯ");
-  oled.setScale(2);
-  oled.setCursor(6, 5);
-  oled.print("ВЕЧЕРИНКА!");
-  oled.update();
-  for (;;) {
-    oled.invertDisplay(true);
-    delay(200);
-    oled.invertDisplay(false);
-    delay(200);
-    if (millis() - tmr > 5000) return;
-  }
-}
-
-void overlapTest() {
-  oled.clear();
-  oled.setScale(1);
-  oled.setCursorXY(0, 0);
-  oled.print("LOL");
-  oled.update();
-  delay(500);
-  oled.setCursorXY(0, 8);
-  oled.print("KEK!");
-  oled.update();
-  delay(500);
-
-  oled.setCursorXY(40, 4);
-  oled.print("LOL");
-  oled.update();
-  delay(500);
-  oled.setCursorXY(40, 12);
-  oled.print("KEK!");
-  oled.update();
-  delay(500);
-
-  oled.setScale(2);
-  oled.setCursorXY(0, 24);
-  oled.print("LOL");
-  oled.update();
-  delay(500);
-  oled.setCursorXY(0, 40);
-  oled.print("KEK!");
-  oled.update();
-  delay(500);
-
-  oled.setCursorXY(60, 28);
-  oled.print("LOL");
-  oled.update();
-  delay(500);
-  oled.setCursorXY(60, 44);
-  oled.print("KEK!");
-  oled.update();
-  delay(5000);
-}
-
-
-
-
-void test_display() {
-  const uint8_t bitmap_32x32[] PROGMEM = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0xC0, 0xC0, 0xE0, 0xF0, 0x70, 0x70, 0x30, 0x30, 0x30, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xC0, 0xE0, 0xF0, 0xF0, 0x70, 0x30, 0x30, 0x20, 0x00, 0x00,
-    0x00, 0x30, 0x78, 0xFC, 0x7F, 0x3F, 0x0F, 0x0F, 0x1F, 0x3C, 0x78, 0xF0, 0xE0, 0xC0, 0x80, 0x80, 0x80, 0x40, 0xE0, 0xF0, 0xF8, 0xFC, 0xFF, 0x7F, 0x33, 0x13, 0x1E, 0x1C, 0x1C, 0x0E, 0x07, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0xC0, 0xE0, 0xF0, 0xF9, 0xF7, 0xEF, 0x5F, 0x3F, 0x7F, 0xFE, 0xFD, 0xFB, 0xF1, 0xE0, 0xC0, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x0C, 0x1E, 0x33, 0x33, 0x1F, 0x0F, 0x07, 0x03, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x03, 0x07, 0x0F, 0x1F, 0x3F, 0x1F, 0x0E, 0x04, 0x00, 0x00, 0x00, 0x00,
-  };
-  // --------------------------
-  oled.clear();   // очистить дисплей (или буфер)
-  oled.update();  // обновить. Только для режима с буфером! OLED_BUFFER
-
-  // --------------------------
-  oled.home();            // курсор в 0,0
-  oled.print("Hello!");   // печатай что угодно: числа, строки, float, как Serial!
-  oled.update();
-  delay(2000);
-
-  // --------------------------
-  oled.setCursor(5, 1);   // курсор в (пиксель X, строка Y)
-  oled.setScale(2);
-  oled.print("Hello!");
-  oled.update();
-  delay(2000);
-
-  // --------------------------
-
-
-  // --------------------------
-  oled.clear();
-  oled.home();
-  oled.setScale(1);
-  oled.invertText(false);
-  oled.autoPrintln(true);   // автоматически переносить текст
-  oled.print(F("Lorem ipsum dolor sit amet, лорем ипсум долор сит амет привет народ ё, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam"));
-  oled.update();
-  delay(2000);
-
-  // --------------------------
-  oled.home();
-  oled.textMode(BUF_ADD);
-  // BUF_ADD - наложить текст
-  // BUF_SUBTRACT - вычесть текст
-  // BUF_REPLACE - заменить (весь прямоугольник буквы)
-  oled.home();
-  oled.setScale(3);
-  oled.print("KEK!");
-  oled.update();
-  delay(2000);
-
-  // --------------------------
-  // СЕРВИС
-  //oled.setContrast(10);   // яркость 0..255
-  //oled.setPower(true);    // true/false - включить/выключить дисплей
-  //oled.flipH(true);       // true/false - отзеркалить по горизонтали
-  //oled.flipV(true);       // true/false - отзеркалить по вертикали
-  //oled.isEnd();           // возвращает true, если дисплей "кончился" - при побуквенном выводе
-
-  // --------------------------
-  oled.clear();
-  oled.dot(0, 0);     // точка на x,y
-  oled.dot(0, 1, 1);  // третий аргумент: 0 выкл пиксель, 1 вкл пиксель (по умолч)
-  oled.line(5, 5, 10, 10);        // линия x0,y0,x1,y1
-  //oled.line(5, 5, 10, 10, 0);   // пятый аргумент: 0 стереть, 1 нарисовать (по умолч)
-  oled.fastLineH(0, 5, 10);       // горизонтальная линия (y, x1, x2)
-  //oled.fastLineH(0, 5, 10, 0);  // четвёртый аргумент: 0 стереть, 1 нарисовать (по умолч)
-  oled.fastLineV(0, 5, 10);       // аналогично верт. линия (x, y1, y2)
-  oled.rect(20, 20, 30, 25);      // прямоугольник (x0,y0,x1,y1)
-  oled.rect(5, 35, 35, 60, OLED_STROKE);      // прямоугольник (x0,y0,x1,y1)
-  // параметры фигуры:
-  // OLED_CLEAR - очистить
-  // OLED_FILL - залить
-  // OLED_STROKE - нарисовать рамку
-  oled.roundRect(50, 5, 80, 25, OLED_STROKE);  // аналогично скруглённый прямоугольник
-  oled.circle(60, 45, 15, OLED_STROKE);        // окружность с центром в (x,y, с радиусом)
-  oled.circle(60, 45, 5, OLED_FILL);           // четвёртый аргумент: параметр фигуры
-
-  // битмап
-  oled.drawBitmap(90, 16, bitmap_32x32, 32, 32, BITMAP_NORMAL, BUF_ADD);
-  //oled.drawBitmap(90, 16, bitmap_32x32, 32, 32);  // по умолч. нормал и BUF_ADD
-  // x, y, имя, ширина, высота, BITMAP_NORMAL(0)/BITMAP_INVERT(1), BUF_ADD/BUF_SUBTRACT/BUF_REPLACE
-  
-  oled.update();
-  oled.clear();
-  oled.fill(0xFF); // Заполнить все пиксели
-  oled.update();
-  delay(5000);
-  oled.clear();
-  oled.update();
-  oled.clear();
-  oled.home();
-
-
-
-
-
-  overlapTest();
-  party();
-  
-  oled.clear();
-  oled.home();
-  ESP.restart();
 }
 //void sound_test() {
 //  oled.clear();
@@ -638,21 +473,18 @@ void test_display() {
 //  }
 //}
 void sysInfo() {
-  oled.clear();
   oled.autoPrintln(true);
-  oled.setCursor(0,1);
-  oled.printf("Версия: 0.1D\n");
+  ui_rama("Версия 0.1 Dev", true, true, true);
   oled.setCursor(0,2);
-  oled.printf("Опиративка: %d bytes\n", ESP.getFreeHeap());
+  oled.printf("Опиративка: %d \n", ESP.getFreeHeap());
+  oled.setCursor(0,3);
+  oled.printf("Размер прош.:%u \n", ESP.getSketchSize());
   oled.setCursor(0,4);
-  oled.printf("Размер скетча: %u bytes\n", ESP.getSketchSize());
-  oled.setCursor(0,6);
   oled.printf("Модель ESP: %s\n", ESP.getChipModel());
   oled.update();
-  
   while(true){
     buttons_tick();
-    if (ok.isHold()) {
+    if (ok.isClick()) {
       resetButtons();
       oled.clear();
       oled.home();
@@ -663,47 +495,58 @@ void sysInfo() {
   } 
 }
 void servmode() {
-  const char* serv_items[] = {
-    "Тест звука",
-    "Тест дисплея",
-    "Тест отображения батареи",
+  const char* serv_apps[] = {
+    "Coming soon",
+    "Coming soon",
+    "Тест % батареи",
     "Информация о системе",
     "Выход"
-
   };
-  const uint8_t serv_items_count = sizeof(serv_items)/sizeof(serv_items[0]); // Получаем реальное количество элементов
+  const uint8_t serv_apps_count = sizeof(serv_apps)/sizeof(serv_apps[0]);
+  int8_t serv_apps_ptr = 0;
+  const uint8_t header_height = 16; // Высота заголовка с линией
 
-  int8_t serv_ptr = 0;
+  ui_rama("Версия 0.1 Dev", true, true, true);
   
   while(true) {
+    // Очищаем только область меню (начиная с 3 строки)
+    oled.clear(0, header_height, 127, 63);
     
-    // Исправленный цикл с правильным количеством элементов
-    for(uint8_t i = 0; i < serv_items_count; i++) {
-      oled.setCursor(0, i);
-      if(i == serv_ptr) oled.print(">");
-      oled.print(serv_items[i]);
+    // Рисуем только первый видимый пункт
+    oled.setCursor(2, header_height/8 + 0); // 3 строка (16px)
+    oled.print(serv_apps_ptr == 0 ? ">" : " ");
+    oled.print(serv_apps[0]);
+
+    // Рисуем остальные пункты если есть
+    if(serv_apps_count > 1) {
+      for(uint8_t i = 1; i < serv_apps_count; i++) {
+        oled.setCursor(2, header_height/8 + i); // Следующие строки
+        oled.print(serv_apps_ptr == i ? ">" : " ");
+        oled.print(serv_apps[i]);
+      }
     }
+    
     oled.update();
 
     buttons_tick();
 
-    if(up.isClick()) {
-      if(serv_ptr > 0) serv_ptr--;
-      oled.clear();
+    if(up.isClick() && serv_apps_ptr > 0) {
+      serv_apps_ptr--;
     }
-    if(down.isClick()) {
-      if(serv_ptr < serv_items_count - 1) serv_ptr++; // Исправлено условие
-      oled.clear();
+    if(down.isClick() && serv_apps_ptr < serv_apps_count - 1) {
+      serv_apps_ptr++;
     }
 
     if(ok.isClick()) {
-      switch(serv_ptr) {
+      switch(serv_apps_ptr) {
         case 0: break;
-        case 1: test_display(); break;
+        case 1: break;
         case 2: testBattery(); break;
         case 3: sysInfo(); break;
         case 4: ESP.restart(); // Выход
       }
+      // Перерисовываем интерфейс после возврата
+      ui_rama("Версия 0.1 Dev", true, true, true);
     }
   }
 }
