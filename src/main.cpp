@@ -18,6 +18,7 @@
 #include "tetris.h"         // переменные для тетриса
 #include "bitmaps_oled.h"   // битмапы
 #include "menu_oled.h"      // переменные для меню
+#include "pong.h"           // понг
 // ------------------
 bool alert_f;               // показ ошибки в вебморде
 bool wifiConnected = false;
@@ -633,6 +634,7 @@ void setup() {
     updatePointer();
     pinMode(FREE_PIN, OUTPUT);
     rnd.setSeed(getBattery() + getVoltage() / micros());
+    randomSeed(getBattery() + getVoltage() / micros());
 }
 
 void snake() {
@@ -644,8 +646,8 @@ void snake() {
   int snakeLength = 4;
   int snakeX[128];
   int snakeY[64];
-  int foodX = random(2, 30) * BLOCK_SIZE;
-  int foodY = random(2, 14) * BLOCK_SIZE;
+  int foodX = rnd.get(2, 30) * BLOCK_SIZE;
+  int foodY = rnd.get(2, 14) * BLOCK_SIZE;
   int headX = 20;
   int headY = 20;
   int dirX = BLOCK_SIZE;
@@ -695,8 +697,8 @@ void snake() {
       // Проверка на съедение
       if (headX == foodX && headY == foodY) {
         snakeLength++;
-        foodX = random(2, 30) * BLOCK_SIZE;
-        foodY = random(2, 14) * BLOCK_SIZE;
+        foodX = rnd.get(2, 30) * BLOCK_SIZE;
+        foodY = rnd.get(2, 14) * BLOCK_SIZE;
       }
       
       // Отрисовка в буфер
@@ -737,7 +739,7 @@ startDinoGame:                         // Начало игры
   int8_t oldEnemyPos = 128;            // Позиция старого противника (тот, что уже заходит за горизонт)
   int8_t oldEnemyType = 0;             // Тип старого противника (тот, что уже заходит за горизонт)
   int8_t newEnemyPos = 128;            // Позиция нового противника (тот, что только выходит изза горизонта)
-  int8_t newEnemyType = random(0, 3);  // Тип нового противника - определяем случайно
+  int8_t newEnemyType = rnd.get(0, 3);  // Тип нового противника - определяем случайно
   bool dinoStand = true;               // Динозавр стоит на земле
   bool legFlag = true;                 // Флаг переключения ног динозавра
   bool birdFlag = true;                // Флаг взмахов птицы
@@ -791,7 +793,7 @@ startDinoGame:                         // Начало игры
         oldEnemyPos = newEnemyPos;                                           // Новый противник становится старым
         oldEnemyType = newEnemyType;                                         // И копирует тип нового к себе
         newEnemyPos = 128;                                                   // Между тем новый противник выходит изза горизонта
-        newEnemyType = random(0, 3);                                         // Имея каждый раз новый случайный тип
+        newEnemyType = rnd.get(0, 3);                                         // Имея каждый раз новый случайный тип
       }
       if (oldEnemyPos >= -24) {                                              // Двигаем старый пока он полностью не скроется за горизонтом
         oldEnemyPos--;                                                       // Двигаем старый
@@ -979,7 +981,8 @@ void calcul() {
     buttons_tick();
     if (right.isClick()) {
       oled.setScale(0);
-      break;
+      exit();
+      return;
     }
     if (left.isClick()) {
       switch (sign) {
@@ -1110,7 +1113,7 @@ void create_settings() {
  
   // Основной интерфейс настроек
   oled.clear();
-  ui_rama("WiFi веб", true, true, true);
+  ui_rama("WiFi Веб", true, true, true);
   oled.setCursor(0, 2);
   if (wifiConnected) {
     oled.print("IP:");
@@ -1128,9 +1131,9 @@ void create_settings() {
     oled.update();
   }
   oled.setCursor(0, 6);
-  oled.print("OK - Restart");
+  oled.print("OK - Перезагрузка");
   oled.update();
-  sett.setVersion("0.1 dev");
+  sett.setVersion("0.1 DEV");
   // Запуск веб-сервера
   sett.begin();
   sett.onBuild(build);
@@ -1159,8 +1162,8 @@ void newGameTetris() {
   button_rev = 4;
   height = HEIGHT;    // высота = высоте дисплея
   pos = WIDTH / 2;    // фигура появляется в середине
-  fig = random(7);    // выбираем слулчайно фигуру
-  ang = random(4);    // и угол поворота
+  fig = rnd.get(7);    // выбираем слулчайно фигуру
+  ang = rnd.get(4);    // и угол поворота
   color = 2;
 
   // возвращаем обычную скорость падения
@@ -1516,10 +1519,22 @@ String getFilenameByIndex(int idx) {
 }
 /* ======================================================================= */
 /* ============================ Главное меню ============================= */
-void drawMainMenu(void) {                           // Отрисовка главного меню
+bool drawMainMenu(void) {                           // Отрисовка главного меню
   oled.clear();                                     // Очистка
   oled.home();                                      // Возврат на 0,0
   oled.line(0, 10, 127, 10);                        // Линия
+  if (files == 0) {
+    oled.clear();
+    oled.setScale(2);
+    oled.setCursorXY(34, 16);
+    oled.print(F("файлов"));
+    oled.setCursorXY(22, 32);
+    oled.print(F("нету :("));
+    oled.setScale(1);
+    oled.update();
+    delay(1500);
+    return false;
+  }
   oled.print("НАЙДЕННЫЕ ФАЙЛЫ: "); oled.print(files);   // Выводим кол-во файлов
   for (uint8_t i = 0; i < 6 && i < files; i++) {    // Проходимся от 2й до 8й строки оледа
     oled.setCursor(0, i + 2);                       // Ставим курсор на нужную строку
@@ -1529,6 +1544,7 @@ void drawMainMenu(void) {                           // Отрисовка гла
   oled.setCursor(0, constrain(cursor, 0, 5) + 2); oled.print(" ");      // Чистим место под указатель
   oled.setCursor(0, constrain(cursor, 0, 5) + 2); oled.print(">");      // Выводим указатель на нужной строке
   oled.update();                                    // Выводим картинку
+  return true;
 }
 /* ======================================================================= */
 /* ============================ Чтение файла ============================= */
@@ -1694,7 +1710,10 @@ void enterToReadFile(void) {
 void ShowFilesLittleFS() {
   oled.autoPrintln(false);
   files = getFilesCount();                    // Читаем количество файлов
-  drawMainMenu();                             // Рисуем главное меню
+  if (drawMainMenu() == false){               // Рисуем главное меню
+    exit();
+    return;
+  }                            
   while (true)
   {
     buttons_tick();                                     // Опрос кнопок
@@ -1706,7 +1725,8 @@ void ShowFilesLittleFS() {
       cursor = constrain(cursor + 1, 0, files - 1);   // Двигаем курсор
       drawMainMenu();                                 // Обновляем главное меню
     } else if (ok.isHold()) {                         // Если удержана ОК
-      return;                                         // выход
+      exit();                                         // Выход                        
+      return;                                         // Выход
     } else if (ok.isClick()) {                        // Если нажата ОК
       enterToReadFile();                              // Переходим к чтению файла
     }
@@ -1983,12 +2003,172 @@ void timer_oled() {
       }
   }
 }
+
+void drawPaddles() {
+  // Левая ракетка
+  oled.rect(0, player1Y - PADDLE_HEIGHT/2, PADDLE_WIDTH-1, player1Y + PADDLE_HEIGHT/2, OLED_FILL);
+  // Правая ракетка
+  oled.rect(127 - PADDLE_WIDTH, player2Y - PADDLE_HEIGHT/2, 126, player2Y + PADDLE_HEIGHT/2, OLED_FILL);
+}
+
+void drawBall() {
+  oled.rect(ballX - BALL_SIZE/2, ballY - BALL_SIZE/2, 
+           ballX + BALL_SIZE/2, ballY + BALL_SIZE/2, OLED_FILL);
+}
+
+void resetBall() {
+  ballX = 64;
+  ballY = random(16, 48);
+  ballSpeedX = random(0, 2) ? 1 : -1;
+  
+  // Генерируем вертикальную скорость, исключая 0
+  do {
+    ballSpeedY = random(-2, 3); // Увеличиваем диапазон для большего разнообразия углов
+  } while(ballSpeedY == 0);     // Повторяем пока не получим не нулевое значение
+}
+
+void moveAI() {
+  // Уровень сложности (1-легко, 3-сложно)
+  static int difficulty = 2; 
+  const int baseSpeed = 2;    // Базовая скорость
+  const int maxSpeed = 3;     // Максимальная скорость
+  
+  // Рассчитываем направление к цели с плавностью
+  static float player2Yf = player2Y; // Точная позиция с плавающей точкой
+  
+  // Вычисляем центр мяча относительно ракетки
+  int targetY = ballY - (ballSpeedX > 0 ? 0 : PADDLE_WIDTH*2); 
+  
+  // Плавное движение с ограничением скорости
+  float diff = targetY - player2Yf;
+  float move = constrain(diff, -baseSpeed, baseSpeed) * 0.7;
+  
+  // Применяем движение с инерцией
+  player2Yf += move * (0.5 + difficulty*0.2);
+  
+  // Ограничение позиции и перевод в целочисленные координаты
+  player2Yf = constrain(player2Yf, 
+                      PADDLE_HEIGHT/2 + 2.0, 
+                      63 - PADDLE_HEIGHT/2 - 2.0);
+  player2Y = static_cast<int>(player2Yf);
+
+  // Случайная ошибка для реалистичности
+  if(random(100) < 10) { // 10% шанс на ошибку
+    player2Y += random(-4, 3);
+  }
+}
+void pongGame() {
+  resetBall();
+  // Настройка кнопок для плавного управления
+  up.setTimeout(300);  // Время до начала автоповтора (мс)
+  down.setTimeout(300);
+  while(true) {
+      buttons_tick();
+      
+      // Управление игроком с автоповтором
+      static uint32_t moveTimer = millis();
+
+      if(up.isHold() || up.isStep()) {
+          if(millis() - moveTimer > 50) { // Задержка перед автоповтором
+              player1Y -= 2;
+              moveTimer = millis();
+          }
+      }
+
+      if(down.isHold() || down.isStep()) {
+          if(millis() - moveTimer > 50) {
+              player1Y += 2;
+              moveTimer = millis();
+          }
+      }
+      player1Y = constrain(player1Y, PADDLE_HEIGHT/2, 63 - PADDLE_HEIGHT/2);
+      
+      // Движение мяча
+      ballX += ballSpeedX;
+      ballY += ballSpeedY;
+      // Гарантируем, что вертикальная скорость не нулевая
+      if(ballSpeedY == 0) {
+        ballSpeedY = random(0, 2) ? 1 : -1;
+      }
+      // Отскок от верхней и нижней стенок
+      if(ballY <= BALL_SIZE/2 || ballY >= 63 - BALL_SIZE/2) {
+          ballSpeedY = -ballSpeedY;
+      }
+      
+      // Проверка столкновений с ракетками
+      if(ballX <= PADDLE_WIDTH + BALL_SIZE/2) {
+        if(abs(ballY - player1Y) <= PADDLE_HEIGHT/2) {
+            ballSpeedX = -ballSpeedX;
+            ballSpeedY = (ballY - player1Y) / 2;
+            if(ballSpeedY == 0) ballSpeedY = random(0, 2) ? 1 : -1;
+        }
+      }
+      
+      if (ballX >= 127 - PADDLE_WIDTH - BALL_SIZE/2) {
+        if (abs(ballY - player2Y) <= PADDLE_HEIGHT/2) {
+            ballSpeedX = -ballSpeedX;
+            
+            // Стратегия направленных ударов
+            int targetOffset = (player1Y < 32) ? 20 : -20; // Если игрок вверху, бьем вниз
+            ballSpeedY = constrain((ballY - (player2Y + targetOffset)) / 2, -3, 3);
+            
+            // Усложнение с прогрессирующей скоростью
+            ballSpeedX *= 1.1;
+            ballSpeedY *= 1.1;
+        }
+    }
+      
+      // Проверка голов
+      if(ballX < 0) {
+          score2++;
+          resetBall();
+      }
+      if(ballX > 127) {
+          score1++;
+          resetBall();
+      }
+      
+      // Движение ИИ
+      moveAI();
+      
+      // Отрисовка
+      oled.clear();
+      drawPaddles();
+      drawBall();
+      
+      // Отображение счета
+      oled.setCursor(40, 0);
+      oled.print(score1);
+      oled.print(":");
+      oled.print(score2);
+      
+      // Центральная линия
+      for(int i = 0; i < 64; i += 4) {
+          oled.dot(64, i);
+      }
+      
+      oled.update();
+      
+      // Выход по долгому нажатию OK
+      if(ok.isHold()) {
+          up.setTimeout(300);
+          down.setTimeout(300);
+          score1 = score2 = 0;
+          exit();
+          return;
+      }
+      
+      delay(30);
+  }
+}
+
 void mini_apps_menu() {
   const char* mini_apps[] = {
     "Кубик",
     "Змейка",
     "Ардуино дино",
     "Тетрис",
+    "Понг",
     "Назад"
   };
   const uint8_t mini_apps_count = sizeof(mini_apps)/sizeof(mini_apps[0]);
@@ -2032,7 +2212,8 @@ void mini_apps_menu() {
         case 1: snake(); break;
         case 2: PlayDinosaurGame(); break;
         case 3: start_tetris_r(); break;
-        case 4: exit(); resetButtons(); return;
+        case 4: pongGame(); break;
+        case 5: exit(); resetButtons(); return;
       }
       // Перерисовываем интерфейс после возврата
       ui_rama("Мини приложения", true, true, true);
