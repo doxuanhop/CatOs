@@ -494,10 +494,65 @@ void sysInfo() {
     }
   } 
 }
+bool deleteSettings() {
+  if (LittleFS.remove("/data.db")) {   // Удаляем файл с настройками
+    db.begin();                        // Переинициализируем базу
+    initSettings();                    // Создаём настройки по умолчанию
+    return true;
+  }
+  return false;
+}
+void deleteSettings_ui() {
+  oled.clear();
+  if (deleteSettings()) {
+    oled.setScale(2);
+    oled.setCursorXY(10, 16);
+    oled.print(F("настройки"));
+    oled.setCursorXY(16, 32);
+    oled.print(F("сброшены"));
+    oled.setScale(1);
+    oled.update();
+  } else {
+    oled.setScale(2);
+    oled.setCursorXY(10, 16);
+    oled.print(F("Ошибочка!"));
+    oled.setScale(1);
+    oled.update();
+  }
+  delay(1500);
+  ESP.restart();
+}
+void formatFS() {
+  oled.clear();
+  oled.setCursor(0, 2);
+  oled.print("Подтвердите сброс:");
+  oled.setCursor(0, 4);
+  oled.print("Удерживайте OK");
+  oled.update();
+  
+  // Ожидание подтверждения 3 секунды
+  uint32_t tmr = millis();
+  while(millis() - tmr < 3000) {
+    ok.tick();
+    if(ok.isHold()) {
+      LittleFS.format();                   // Форматируем файловую систему
+      oled.clear();
+      oled.setScale(2);
+      oled.setCursorXY(34, 16);
+      oled.print(F("файлы"));
+      oled.setCursorXY(22, 32);
+      oled.print(F("удалены"));
+      oled.setScale(1);
+      oled.update();
+      delay(1500);
+      ESP.restart();
+    }
+  } 
+}
 void servmode() {
   const char* serv_apps[] = {
-    "Coming soon",
-    "Coming soon",
+    "Cброс настроек",
+    "Форматирование",
     "Тест % батареи",
     "Информация о системе",
     "Выход"
@@ -539,8 +594,8 @@ void servmode() {
 
     if(ok.isClick()) {
       switch(serv_apps_ptr) {
-        case 0: break;
-        case 1: break;
+        case 0: deleteSettings_ui(); break;
+        case 1: formatFS(); break;
         case 2: testBattery(); break;
         case 3: sysInfo(); break;
         case 4: ESP.restart(); // Выход
