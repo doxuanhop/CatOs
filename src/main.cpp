@@ -53,8 +53,6 @@ byte files = 0;                               // Количество файло
 #define ADC_RESOLUTION     12     // 12 бит (0-4095)
 #define VOLTAGE_DIVIDER    2.0
 // Напряжения для расчета процента заряда (калибровка под ваш аккумулятор)
-#define BAT_MIN_VOLTAGE    2.32    // Минимальное напряжение (0%)
-#define BAT_MAX_VOLTAGE    3.45    // Максимальное напряжение (100%)
 #define BAT_NOMINAL_VOLTAGE 3.7   // Номинальное напряжение (3.7V)
 #define BATTERY_PIN        34     // GPIO34 (ADC1_CH6) для измерения напряжения
 float batteryVoltage = 0;
@@ -80,6 +78,8 @@ DB_KEYS(
   kk,
   input,
   OLED_BRIGHTNESS,
+  BAT_MIN_VOLTAGE,
+  BAT_MAX_VOLTAGE,
   AP_SSID,
   AP_PASS,
   wifi_enabled,
@@ -89,10 +89,11 @@ DB_KEYS(
 );
 int getBattery() {
   int adcValue = analogRead(BATTERY_PIN);
+  float bat_min = db[kk::BAT_MIN_VOLTAGE].toFloat();
+  float bat_max = db[kk::BAT_MAX_VOLTAGE].toFloat();
+  
   batteryVoltage = (adcValue / (pow(2, ADC_RESOLUTION) - 1)) * REF_VOLTAGE * VOLTAGE_DIVIDER;
-
-  // 2. Расчет процента заряда (с ограничением 0-100%)
-  batteryPercentage = mapFloat(batteryVoltage, BAT_MIN_VOLTAGE, BAT_MAX_VOLTAGE, 0, 100);
+  batteryPercentage = mapFloat(batteryVoltage, bat_min, bat_max, 0, 100);
   batteryPercentage = constrain(batteryPercentage, 0, 100);
   return batteryPercentage;
 }
@@ -163,6 +164,16 @@ void update(sets::Updater& upd) {
     alert_f = false;
     upd.alert("Пароль должен быть не менее 8 символов!");
   }
+    // Проверка корректности напряжений
+    float bat_min = db[kk::BAT_MIN_VOLTAGE].toFloat();
+    float bat_max = db[kk::BAT_MAX_VOLTAGE].toFloat();
+    
+    if(bat_min >= bat_max) {
+      upd.alert("Мин. напряжение должно быть меньше макс.!");
+      db[kk::BAT_MIN_VOLTAGE] = 2.32;
+      db[kk::BAT_MAX_VOLTAGE] = 3.45;
+      db.update();
+    }
 }
 bool connectToWiFi() {
   String ssid = db[kk::wifi_ssid];
@@ -256,7 +267,11 @@ void build(sets::Builder& b) {
       b.Input(kk::AP_SSID, "SSID точки");
       b.Pass(kk::AP_PASS, "Пароль точки");
   }
-
+  {
+    sets::Group g(b, "Калибровка АКБ");
+    b.Number(kk::BAT_MIN_VOLTAGE, "Мин. напряжение");
+    b.Number(kk::BAT_MAX_VOLTAGE, "Макс. напряжение");
+  }
   // Секция управления
   {
       sets::Group g(b, "Управление");
@@ -266,7 +281,6 @@ void build(sets::Builder& b) {
             sett.reload(true);
         } else {
             alert_f = true;  // Устанавливаем флаг
-            b.reload();      // Форсируем обновление
         }
     }
   }
@@ -276,6 +290,10 @@ void build(sets::Builder& b) {
 void initSettings() {
   // Существующие настройки
   if (!db.has(kk::OLED_BRIGHTNESS)) db.init(kk::OLED_BRIGHTNESS, 128);
+  if (!db.has(kk::BAT_MIN_VOLTAGE)) 
+    db.init(kk::BAT_MIN_VOLTAGE, 2.32f);
+  if (!db.has(kk::BAT_MAX_VOLTAGE)) 
+    db.init(kk::BAT_MAX_VOLTAGE, 3.45f);
   if (!db.has(kk::AP_SSID)) {
     db.init(kk::AP_SSID, "CatOs");
   }
@@ -412,12 +430,13 @@ bool draw_logo() {
 void testBattery() {
   oled.clear();
   ui_rama("Версия 0.1 Dev", true, true, true);
+  float bat_min = db[kk::BAT_MIN_VOLTAGE].toFloat();
+  float bat_max = db[kk::BAT_MAX_VOLTAGE].toFloat();
   while (true) {
     int adcValue = analogRead(BATTERY_PIN);
+    
     batteryVoltage = (adcValue / (pow(2, ADC_RESOLUTION) - 1)) * REF_VOLTAGE * VOLTAGE_DIVIDER;
-  
-    // 2. Расчет процента заряда (с ограничением 0-100%)
-    batteryPercentage = mapFloat(batteryVoltage, BAT_MIN_VOLTAGE, BAT_MAX_VOLTAGE, 0, 100);
+    batteryPercentage = mapFloat(batteryVoltage, bat_min, bat_max, 0, 100);
     batteryPercentage = constrain(batteryPercentage, 0, 100);
     oled.setCursor(0,2);
     oled.print("V ~: ");
@@ -434,11 +453,11 @@ void testBattery() {
     
     oled.setCursor(0,5);
     oled.print("Мин V: ");
-    oled.print(BAT_MIN_VOLTAGE);
+    oled.print(bat_min);
     
     oled.setCursor(0,6);
     oled.print("Макс V: ");
-    oled.print(BAT_MAX_VOLTAGE);
+    oled.print(bat_max);
 
     static uint32_t batteryTimer = millis();
     buttons_tick();
@@ -550,11 +569,92 @@ void formatFS() {
     }
   } 
 }
+void batteryCalibration() {
+  enum CalState { MIN_VOLTAGE, MAX_VOLTAGE, SAVE }; // Объявляем перечисление
+  CalState state = MIN_VOLTAGE; // Используем CalState как тип
+  float bat_min = db[kk::BAT_MIN_VOLTAGE].toFloat();
+  float bat_max = db[kk::BAT_MAX_VOLTAGE].toFloat();
+  float* current_val = &bat_min;
+  
+  while(true) {
+    oled.clear();
+    oled.setCursor(0, 0);
+    oled.print("Калибровка АКБ:");
+    
+    // Отображение текущих значений
+    oled.setCursor(0, 2);
+    oled.print(state == MIN_VOLTAGE ? ">" : " ");
+    oled.print("Мин: ");
+    oled.print(bat_min, 2);
+    oled.print("V");
+    
+    oled.setCursor(0, 3);
+    oled.print(state == MAX_VOLTAGE ? ">" : " ");
+    oled.print("Макс: ");
+    oled.print(bat_max, 2);
+    oled.print("V");
+    
+    oled.setCursor(0, 5);
+    oled.print(state == SAVE ? ">" : " ");
+    oled.print("Сохранить");
+    
+    oled.setCursor(0, 7);
+    oled.print("Удержать OK - выход");
+    
+    oled.update();
+
+    buttons_tick();
+    
+    // Навигация
+    if(up.isClick()) {
+      if(state > MIN_VOLTAGE) state = (CalState)(state - 1);
+    }
+    if(down.isClick()) {
+      if(state < SAVE) state = (CalState)(state + 1);
+    }
+    
+    // Регулировка значений
+    if(ok.isClick()) {
+      switch(state) {
+        case MIN_VOLTAGE: current_val = &bat_min; break;
+        case MAX_VOLTAGE: current_val = &bat_max; break;
+        case SAVE: 
+          if(bat_min < bat_max) {
+            db[kk::BAT_MIN_VOLTAGE] = bat_min;
+            db[kk::BAT_MAX_VOLTAGE] = bat_max;
+            db.update();
+            return;
+          }
+          break;
+      }
+    }
+    
+    // Изменение значений
+    if(state != SAVE) {
+      if(right.isClick()) *current_val += 0.01;
+      if(left.isClick()) *current_val -= 0.01;
+      
+      // Ограничения
+      *current_val = constrain(*current_val, 2.0, 4.2);
+    }
+    
+    // Выход по удержанию
+    if(ok.isHold()) {
+      if(bat_min < bat_max) {
+        db[kk::BAT_MIN_VOLTAGE] = bat_min;
+        db[kk::BAT_MAX_VOLTAGE] = bat_max;
+        db.update();
+      }
+      return;
+    }
+  }
+}
 void servmode() {
   const char* serv_apps[] = {
     "Cброс настроек",
     "Форматирование",
     "Тест % батареи",
+    "Калибровка АКБ",
     "Информация о системе",
     "Выход"
   };
@@ -598,8 +698,9 @@ void servmode() {
         case 0: deleteSettings_ui(); break;
         case 1: formatFS(); break;
         case 2: testBattery(); break;
-        case 3: sysInfo(); break;
-        case 4: ESP.restart(); // Выход
+        case 3: batteryCalibration(); break;
+        case 4: sysInfo(); break;
+        case 5: ESP.restart(); // Выход
       }
       // Перерисовываем интерфейс после возврата
       ui_rama("Версия 0.1 Dev", true, true, true);
@@ -2070,16 +2171,22 @@ void pongGame() {
 
       if(up.isHold() || up.isStep()) {
           if(millis() - moveTimer > 50) { // Задержка перед автоповтором
-              player1Y -= 2;
+              player1Y -= 4;
               moveTimer = millis();
           }
       }
 
       if(down.isHold() || down.isStep()) {
           if(millis() - moveTimer > 50) {
-              player1Y += 2;
+              player1Y += 4;
               moveTimer = millis();
           }
+      }
+      if(up.isPress()) {
+        player1Y -= 2;
+      }
+      if(down.isPress()) {
+        player1Y += 2;
       }
       player1Y = constrain(player1Y, PADDLE_HEIGHT/2, 63 - PADDLE_HEIGHT/2);
       
