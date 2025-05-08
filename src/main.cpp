@@ -19,6 +19,7 @@
 #include "bitmaps_oled.h"   // битмапы
 #include "menu_oled.h"      // переменные для меню
 #include "pong.h"           // понг
+#include "flappy_bird.h"    // птичка
 // ------------------
 bool alert_f;               // показ ошибки в вебморде
 bool wifiConnected = false;
@@ -52,7 +53,7 @@ byte files = 0;                               // Количество файло
 #define REF_VOLTAGE        3.3    // Опорное напряжение ADC (3.3V для ESP32)
 #define ADC_RESOLUTION     12     // 12 бит (0-4095)
 #define VOLTAGE_DIVIDER    2.0
-// Напряжения для расчета процента заряда (калибровка под ваш аккумулятор)
+// Напряжения для расчета процента заряда (калибровка под ваш аккумулятор). Настройки в serv меню
 #define BAT_NOMINAL_VOLTAGE 3.7   // Номинальное напряжение (3.7V)
 #define BATTERY_PIN        34     // GPIO34 (ADC1_CH6) для измерения напряжения
 float batteryVoltage = 0;
@@ -69,10 +70,12 @@ GyverDBFile db(&LittleFS, "/data.db");
 SettingsGyver sett("CatOS", &db);
 Random16 rnd;
 GTimer_ms gameTimer(GAME_SPEED); // Таймер игр
+GTimer_ms animTimer(200); // Таймер анимации птицы
 //отрисовка батареи
 float mapFloat(float x, float in_min, float in_max, float out_min, float out_max) {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
+//------------------------
 // кей
 DB_KEYS(
   kk,
@@ -2244,7 +2247,7 @@ void pongGame() {
       drawBall();
       
       // Отображение счета
-      oled.setCursor(40, 0);
+      oled.setCursor(56, 0);
       oled.print(score1);
       oled.print(":");
       oled.print(score2);
@@ -2268,62 +2271,242 @@ void pongGame() {
       delay(30);
   }
 }
+void initFlappy() {
+  birdY = 32;
+  birdVelocity = 0;
+  score = 0;
+  gameOver = false;
+  
+  // Инициализация труб
+  for(uint8_t i = 0; i < 3; i++) {
+      pipePositions[i] = 128 + i * PIPE_SPACING;
+      pipeHeights[i] = random(10, 40);
+      pipePassed[i] = false;
+  }
+}
 
-void mini_apps_menu() {
-  const char* mini_apps[] = {
-    "Кубик",
-    "Змейка",
-    "Ардуино дино",
-    "Тетрис",
-    "Понг",
-    "Назад"
-  };
-  const uint8_t mini_apps_count = sizeof(mini_apps)/sizeof(mini_apps[0]);
-  int8_t mini_apps_ptr = 0;
-  const uint8_t header_height = 16; // Высота заголовка с линией
+void updatePipes() {
+  for(uint8_t i = 0; i < 3; i++) {
+      pipePositions[i] -= 2;
+      
+      // Обновление счета
+      if(pipePositions[i] + PIPE_WIDTH < BIRD_START_X && !pipePassed[i]) {
+          score++;
+          pipePassed[i] = true; // Помечаем трубу как пройденную
+      }
+      
+      // Регенерация труб
+      if(pipePositions[i] + PIPE_WIDTH < 0) {
+          pipePositions[i] = 128 + PIPE_SPACING * 2; // Переносим трубу в конец очереди
+          pipeHeights[i] = random(10, 40);
+          pipePassed[i] = false; // Сбрасываем флаг прохождения для новой трубы
+      }
+  }
+}
+bool checkCollision() {
 
-  ui_rama("Мини приложения", true, true, true);
+  if(birdY < 0 || birdY + BIRD_SIZE > 75) return true;
+
+  for(uint8_t i = 0; i < 3; i++) {
+      if(pipePositions[i] < BIRD_START_X + BIRD_SIZE && 
+         pipePositions[i] + PIPE_WIDTH > BIRD_START_X) {
+
+          if(birdY < pipeHeights[i]) return true;
+
+          if(birdY + BIRD_SIZE > pipeHeights[i] + PIPE_GAP) return true;
+      }
+  }
+  return false;
+}
+
+void drawPipes() {
+  for(uint8_t i = 0; i < 3; i++) {
+      // Верхняя труба
+      oled.rect(pipePositions[i], 0, pipePositions[i] + PIPE_WIDTH - 1, pipeHeights[i]);
+      
+      // Нижняя труба
+      oled.rect(pipePositions[i], pipeHeights[i] + PIPE_GAP, 
+                   pipePositions[i] + PIPE_WIDTH - 1, 63);
+  }
+}
+
+void drawBird() {
+  // Анимация птицы
+  if(animTimer.isReady()) birdFrame = !birdFrame;
+  
+  const uint8_t* frame;
+  if(birdVelocity < -1) frame = midle_bird_16x16;
+  else if(birdVelocity > 1) frame = down_bird_16x16;
+  else frame = midle_bird_16x16;
+  
+  oled.drawBitmap(BIRD_START_X, (int)birdY, frame, 16, 16);
+}
+
+void flappyGame() {
+  initFlappy();
+  gameOver = false;
   
   while(true) {
-    // Очищаем только область меню (начиная с 3 строки)
+      buttons_tick();
+      
+      if(!gameOver) {
+          // Прыжок
+          if(ok.isClick() || up.isClick()) {
+              birdVelocity = JUMP_FORCE;
+          }
+          
+          // Обновление физики
+          birdVelocity += GRAVITY;
+          birdY += birdVelocity;
+          
+          // Обновление труб
+          updatePipes();
+          
+          // Проверка коллизий
+          if(checkCollision()) {
+              gameOver = true;
+          }
+      }
+      
+      // Отрисовка
+      oled.clear();
+      drawPipes();
+      drawBird();
+      
+      
+      if(gameOver) {
+          oled.clear();
+          bool screen_gameOver = true;
+          oled.setCursor(15, 2);
+          oled.setScale(2);
+          oled.print("GAME OVER");
+          oled.setScale(1);
+          oled.setCursor(10, 5);
+          oled.print("OK-Restart  <-Menu");
+          oled.update();
+          while (screen_gameOver) {
+            buttons_tick();
+            if(ok.isClick()) {
+              initFlappy();
+              screen_gameOver = false;
+              gameOver = false;
+            }
+            if(left.isClick() || ok.isHold()) {
+              exit();
+              return;
+            }
+          }
+      }
+      
+      oled.update();
+      
+      if(left.isClick() || ok.isHold()) {
+          exit();
+          return;
+      }
+      
+      delay(30);
+  }
+}
+
+void mini_apps_menu() {
+  const char* mini_apps_pages[][6] = {
+    { // Страница 1
+      "Кубик",
+      "Змейка",
+      "Ардуино дино",
+      "Тетрис",
+      "Понг",
+      "След.стр ->"
+    },
+    { // Страница 2
+      "Flappy Bird",
+      "",
+      "",
+      "<- Пред.стр",
+      "",
+      "Назад"
+    }
+  };
+  
+  const uint8_t pages_count = 2;
+  uint8_t current_page = 0;
+  int8_t mini_apps_ptr = 0;
+  const uint8_t header_height = 16;
+
+  ui_rama("Мини приложения", true, true, true);
+
+  while(true) {
+    // Отрисовка текущей страницы
     oled.clear(0, header_height, 127, 63);
     
-    // Рисуем только первый видимый пункт
-    oled.setCursor(2, header_height/8 + 0); // 3 строка (16px)
-    oled.print(mini_apps_ptr == 0 ? ">" : " ");
-    oled.print(mini_apps[0]);
-
-    // Рисуем остальные пункты если есть
-    if(mini_apps_count > 1) {
-      for(uint8_t i = 1; i < mini_apps_count; i++) {
-        oled.setCursor(2, header_height/8 + i); // Следующие строки
-        oled.print(mini_apps_ptr == i ? ">" : " ");
-        oled.print(mini_apps[i]);
-      }
+    for(uint8_t i = 0; i < 6; i++) {
+      oled.setCursor(2, header_height/8 + i);
+      if(mini_apps_ptr == i) oled.print(">");
+      else oled.print(" ");
+      oled.print(mini_apps_pages[current_page][i]);
     }
-    
+
+    // Индикатор страниц
+    oled.setCursor(56, 7);
+    oled.print("[");
+    oled.print(current_page + 1);
+    oled.print("/");
+    oled.print(pages_count);
+    oled.print("]");
+
     oled.update();
 
     buttons_tick();
 
+    // Навигация между страницами
+    if(right.isClick() && current_page < pages_count-1) {
+      current_page++;
+      mini_apps_ptr = 0;
+    }
+    if(left.isClick() && current_page > 0) {
+      current_page--;
+      mini_apps_ptr = 0;
+    }
+
+    // Вертикальная навигация
     if(up.isClick() && mini_apps_ptr > 0) {
       mini_apps_ptr--;
     }
-    if(down.isClick() && mini_apps_ptr < mini_apps_count - 1) {
+    if(down.isClick() && mini_apps_ptr < 5) {
       mini_apps_ptr++;
     }
 
     if(ok.isClick()) {
-      switch(mini_apps_ptr) {
-        case 0: dice_random(); break;
-        case 1: snake(); break;
-        case 2: PlayDinosaurGame(); break;
-        case 3: start_tetris_r(); break;
-        case 4: pongGame(); break;
-        case 5: exit(); resetButtons(); return;
+      // Обработка выбора для текущей страницы
+      if(current_page == 0) {
+        switch(mini_apps_ptr) {
+          case 0: dice_random(); break;
+          case 1: snake(); break;
+          case 2: PlayDinosaurGame(); break;
+          case 3: start_tetris_r(); break;
+          case 4: pongGame(); break;
+          case 5: current_page++; mini_apps_ptr = 0; break; // Переход на след. страницу
+        }
+      } 
+      else if(current_page == 1) {
+        switch(mini_apps_ptr) {
+          case 0: flappyGame(); break;
+          case 1: break;
+          case 2: break;
+          case 3: current_page--; mini_apps_ptr = 0; break; // Возврат на пред. страницу
+          case 4: break;
+          case 5: exit(); resetButtons(); return;
+        }
       }
-      // Перерисовываем интерфейс после возврата
+      
+      // Обновляем интерфейс после возврата
       ui_rama("Мини приложения", true, true, true);
+    }
+    
+    if(left.isHold() || ok.isHold()) {
+      exit();
+      return;
     }
   }
 }
