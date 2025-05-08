@@ -3,6 +3,7 @@
     "files.associations": {
         "vector": "cpp",
         "cmath": "cpp",
-        "cstdint": "cpp"
+        "cstdint": "cpp",
+        "tuple": "cpp"
     }
 }

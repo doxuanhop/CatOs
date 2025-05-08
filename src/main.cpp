@@ -1,3 +1,4 @@
+#define FIRMWARE_VERSION "v0.1.1D"
 // дисплей
 #define RES 17
 #define DC 16
@@ -22,17 +23,17 @@
 #include "flappy_bird.h"    // птичка
 // ------------------
 bool alert_f;               // показ ошибки в вебморде
-bool wifiConnected = false;
-bool apStarted = false;
+bool wifiConnected = false; // для wifi морды
+bool apStarted = false;     // тоже
 // пины
-#define FREE_PIN 25 
-#define batteryPin 34
+#define FREE_PIN 25         // свободный пин
+#define batteryPin 34       // пин для измерения % батареи
 //кнопки
-#define UP_PIN 26
-#define DOWN_PIN 21
-#define RIGHT_PIN 14
-#define LEFT_PIN 12
-#define OK_PIN 22
+#define UP_PIN 26           // верх
+#define DOWN_PIN 21         // вниз
+#define RIGHT_PIN 14        // право
+#define LEFT_PIN 12         // влево
+#define OK_PIN 22           // ОК
 //----------------------------
 // калькулятор
 #define CALCUL_TYPE int64_t      // Тип переменной зачений в калькуляторе
@@ -46,16 +47,16 @@ bool isdraw;
 #define DINO_GAME_FPS 30        // Скорость обновления дисплея
 //----------------------------
 //читалка
-byte cursor = 0;                              // Указатель (курсор) меню
-byte files = 0;                               // Количество файлов
+byte cursor = 0;                // Указатель (курсор) меню
+byte files = 0;                 // Количество файлов
 //-------------
 //показ заряда
-#define REF_VOLTAGE        3.3    // Опорное напряжение ADC (3.3V для ESP32)
-#define ADC_RESOLUTION     12     // 12 бит (0-4095)
+#define REF_VOLTAGE        3.3  // Опорное напряжение ADC (3.3V для ESP32)
+#define ADC_RESOLUTION     12   // 12 бит (0-4095)
 #define VOLTAGE_DIVIDER    2.0
 // Напряжения для расчета процента заряда (калибровка под ваш аккумулятор). Настройки в serv меню
-#define BAT_NOMINAL_VOLTAGE 3.7   // Номинальное напряжение (3.7V)
-#define BATTERY_PIN        34     // GPIO34 (ADC1_CH6) для измерения напряжения
+#define BAT_NOMINAL_VOLTAGE 3.7 // Номинальное напряжение (3.7V)
+#define BATTERY_PIN        34   // GPIO34 (ADC1_CH6) для измерения напряжения
 float batteryVoltage = 0;
 int batteryPercentage = 0;
 //----------------------------------
@@ -66,11 +67,11 @@ GButton down(DOWN_PIN);
 GButton right(RIGHT_PIN);
 GButton left(LEFT_PIN);
 GButton ok(OK_PIN);                                  
-GyverDBFile db(&LittleFS, "/data.db");
-SettingsGyver sett("CatOS", &db);
-Random16 rnd;
-GTimer_ms gameTimer(GAME_SPEED); // Таймер игр
-GTimer_ms animTimer(200); // Таймер анимации птицы
+GyverDBFile db(&LittleFS, "/data.db");              //файл где хранятся настройки
+SettingsGyver sett("CatOS " FIRMWARE_VERSION, &db); // веб морда
+Random16 rnd;                                       // рандом
+GTimer_ms gameTimer(GAME_SPEED);                    // Таймер игр
+GTimer_ms animTimer(200);                           // Таймер анимации птицы
 //отрисовка батареи
 float mapFloat(float x, float in_min, float in_max, float out_min, float out_max) {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
@@ -88,6 +89,7 @@ DB_KEYS(
   wifi_enabled,
   wifi_ssid,
   wifi_pass,
+  serial_number,
   apply
 );
 int getBattery() {
@@ -306,6 +308,10 @@ void initSettings() {
   if (!db.has(kk::wifi_enabled)) {
       db.init(kk::wifi_enabled, 0);
   }
+  if (!db.has(kk::serial_number)) {
+    int serial = rnd.get(1000, 4000);
+    db.init(kk::serial_number, serial);
+  }
   if (!db.has(kk::wifi_ssid)) db.init(kk::wifi_ssid, "");
   if (!db.has(kk::wifi_pass)) db.init(kk::wifi_pass, "");
   
@@ -375,7 +381,7 @@ bool draw_logo() {
   oled.clear();
   oled.drawBitmap(50, 16, logo, 32, 32);
   oled.setCursor(0,0);
-  oled.print("By CatDevCode v0.1D");
+  oled.print("By CatDevCode " FIRMWARE_VERSION);
   oled.setCursor(0,7);
   oled.print("         CatOs");
   oled.update();
@@ -431,8 +437,7 @@ bool draw_logo() {
 //  }
 //}
 void testBattery() {
-  oled.clear();
-  ui_rama("Версия 0.1 Dev", true, true, true);
+  ui_rama("Версия " FIRMWARE_VERSION, true, true, true);
   float bat_min = db[kk::BAT_MIN_VOLTAGE].toFloat();
   float bat_max = db[kk::BAT_MAX_VOLTAGE].toFloat();
   while (true) {
@@ -497,7 +502,7 @@ void testBattery() {
 //}
 void sysInfo() {
   oled.autoPrintln(true);
-  ui_rama("Версия 0.1 Dev", true, true, true);
+  ui_rama("Версия " FIRMWARE_VERSION, true, true, true);
   oled.setCursor(0,2);
   oled.printf("Опиративка: %d \n", ESP.getFreeHeap());
   oled.setCursor(0,3);
@@ -665,7 +670,7 @@ void servmode() {
   int8_t serv_apps_ptr = 0;
   const uint8_t header_height = 16; // Высота заголовка с линией
 
-  ui_rama("Версия 0.1 Dev", true, true, true);
+  ui_rama("Версия " FIRMWARE_VERSION, true, true, true);
   
   while(true) {
     // Очищаем только область меню (начиная с 3 строки)
@@ -706,7 +711,7 @@ void servmode() {
         case 5: ESP.restart(); // Выход
       }
       // Перерисовываем интерфейс после возврата
-      ui_rama("Версия 0.1 Dev", true, true, true);
+      ui_rama("Версия " FIRMWARE_VERSION, true, true, true);
     }
   }
 }
@@ -1237,7 +1242,7 @@ void create_settings() {
   oled.setCursor(0, 6);
   oled.print("OK - Перезагрузка");
   oled.update();
-  sett.setVersion("0.1 DEV");
+  sett.setVersion(FIRMWARE_VERSION);
   // Запуск веб-сервера
   sett.begin();
   sett.onBuild(build);
@@ -2094,7 +2099,7 @@ void timer_oled() {
       switch(state) {
           case SET_HOURS: oled.print("Уст. часы   OK->"); break;
           case SET_MINS:  oled.print("Уст. минуты OK->"); break;
-          case SET_SECS:  oled.print("Уст. секундыСТАРТ"); break;
+          case SET_SECS:  oled.print("Уст. секунды СТАРТ"); break;
           case RUNNING:   oled.print("  ОСТАНОВКА ->OK"); break;
           case ALARM:     oled.print("   ОК - СБРОС   "); break;
       }
@@ -2561,12 +2566,38 @@ void brightnessAdjust() {
       if(ok.isHold()) return;
   }
 }
+void aboutFirmware() {
+  int serial_number = db[kk::serial_number].toInt();
+  ui_rama("О прошивке", true, true, true);
+  
+  oled.setCursor(0, 2);
+  oled.print("Автор: CatDevCode");
+  oled.setCursor(0, 3);
+  oled.print("Версия: " FIRMWARE_VERSION);
+  oled.setCursor(0, 4);
+  oled.print("Платформа: ESP32");
+  oled.setCursor(0, 5);
+  oled.print("Сборка: " __DATE__);
+  oled.setCursor(0, 6);
+  oled.print("Серийный номер:");
+  oled.print(serial_number);
+  oled.setCursor(0, 8);
+  oled.print("OK - назад");
+  oled.update();
 
+  while(true) {
+      buttons_tick();
+      if(ok.isClick() || ok.isHold()) {
+          return;
+      }
+  }
+}
 
 void settingsMenu() {
   const char* settings_items[] = {
     "Яркость дисплея",
     "Сеть",
+    "О прошивке",
     "Назад"
 };
   const uint8_t settings_apps_count = sizeof(settings_items)/sizeof(settings_items[0]);
@@ -2608,7 +2639,8 @@ void settingsMenu() {
       switch(settings_apps_ptr) {
         case 0: brightnessAdjust(); break;
         case 1: networkSettings(); break;
-        case 2: exit(); resetButtons(); return;
+        case 2: aboutFirmware(); break;
+        case 3: exit(); resetButtons(); return;
       }
       // Перерисовываем интерфейс после возврата
       ui_rama("Настройки", true, true, true);
