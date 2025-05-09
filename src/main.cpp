@@ -89,7 +89,7 @@ DB_KEYS(
   wifi_enabled,
   wifi_ssid,
   wifi_pass,
-  serial_number,
+  serial_num,
   apply
 );
 int getBattery() {
@@ -156,6 +156,14 @@ String constrainString(String str, uint8_t minLen, uint8_t maxLen) {
       str = str.substring(0, maxLen);
   }
   return str;
+}
+String getChipID() {
+  uint64_t chipid = ESP.getEfuseMac();
+  char sn[17];
+  snprintf(sn, sizeof(sn), "%04X%08X", 
+         (uint16_t)(chipid >> 32), 
+         (uint32_t)chipid);
+  return String(sn);
 }
 // В функции обновления яркости:
 void update(sets::Updater& upd) {
@@ -308,9 +316,8 @@ void initSettings() {
   if (!db.has(kk::wifi_enabled)) {
       db.init(kk::wifi_enabled, 0);
   }
-  if (!db.has(kk::serial_number)) {
-    int serial = rnd.get(1000, 4000);
-    db.init(kk::serial_number, serial);
+  if (!db.has(kk::serial_num)) {
+    db.init(kk::serial_num, getChipID());
   }
   if (!db.has(kk::wifi_ssid)) db.init(kk::wifi_ssid, "");
   if (!db.has(kk::wifi_pass)) db.init(kk::wifi_pass, "");
@@ -2516,7 +2523,7 @@ void mini_apps_menu() {
   }
 }
 // Настройки сети
-void networkSettings() {
+void networkSettings_ap() {
   String ssid = db[kk::AP_SSID].toString();
   String pass = db[kk::AP_PASS].toString();
   
@@ -2567,7 +2574,7 @@ void brightnessAdjust() {
   }
 }
 void aboutFirmware() {
-  int serial_number = db[kk::serial_number].toInt();
+  String serial_number = db[kk::serial_num].toString();
   ui_rama("О прошивке", true, true, true);
   
   oled.setCursor(0, 2);
@@ -2575,14 +2582,19 @@ void aboutFirmware() {
   oled.setCursor(0, 3);
   oled.print("Версия: " FIRMWARE_VERSION);
   oled.setCursor(0, 4);
-  oled.print("Платформа: ESP32");
+  #ifdef ESP32
+    oled.print("Платформа: ESP32");
+  #elif ESP8266
+    oled.print("Платформа: ESP8266");
+  #else
+    oled.print("Платформа: Other");
+  #endif
   oled.setCursor(0, 5);
   oled.print("Сборка: " __DATE__);
   oled.setCursor(0, 6);
   oled.print("Серийный номер:");
+  oled.setCursor(0, 7);
   oled.print(serial_number);
-  oled.setCursor(0, 8);
-  oled.print("OK - назад");
   oled.update();
 
   while(true) {
@@ -2592,11 +2604,34 @@ void aboutFirmware() {
       }
   }
 }
+void networkSettings_sta() {
+  String ssid = db[kk::wifi_ssid].toString();
+  String pass = db[kk::wifi_pass].toString();
+  
+  while(true) {
+      oled.clear();
+      oled.setCursor(0, 0);
+      oled.print("Сеть: ");
+      oled.print(ssid);
+      oled.setCursor(0, 2);
+      oled.print("Пароль: ");
+      oled.print(pass);
+      oled.setCursor(0, 4);
+      oled.print("OK - выход");
+      oled.update();
 
+      buttons_tick();
+      
+      if(ok.isClick()) {
+          return;
+      }
+  }
+}
 void settingsMenu() {
   const char* settings_items[] = {
     "Яркость дисплея",
-    "Сеть",
+    "Сеть AP",
+    "Сеть STA",
     "О прошивке",
     "Назад"
 };
@@ -2638,9 +2673,10 @@ void settingsMenu() {
     if(ok.isClick()) {
       switch(settings_apps_ptr) {
         case 0: brightnessAdjust(); break;
-        case 1: networkSettings(); break;
-        case 2: aboutFirmware(); break;
-        case 3: exit(); resetButtons(); return;
+        case 1: networkSettings_ap(); break;
+        case 2: networkSettings_sta(); break;
+        case 3: aboutFirmware(); break;
+        case 4: exit(); resetButtons(); return;
       }
       // Перерисовываем интерфейс после возврата
       ui_rama("Настройки", true, true, true);
