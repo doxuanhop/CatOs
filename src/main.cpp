@@ -36,24 +36,24 @@ bool apStarted = false;     // тоже
 #define OK_PIN 22           // ОК
 //----------------------------
 // калькулятор
-#define CALCUL_TYPE int64_t      // Тип переменной зачений в калькуляторе
+#define CALCUL_TYPE int64_t // Тип переменной зачений в калькуляторе
 CALCUL_TYPE a, b, result;
-uint8_t thisval, sign;           // 0-+ 1-- 2-* 3-/ 4-^
+uint8_t thisval, sign;      // 0-+ 1-- 2-* 3-/ 4-^
 bool isdraw;
 //----------------------
 // ардуино дино
-#define DINO_GROUND_Y 47        // Позиция динозавра по вертикали
-#define DINO_GRAVITY  0.195f    // Значение гравитации динозавра
-#define DINO_GAME_FPS 30        // Скорость обновления дисплея
+#define DINO_GROUND_Y 47    // Позиция динозавра по вертикали
+#define DINO_GRAVITY  0.195f// Значение гравитации динозавра
+#define DINO_GAME_FPS 30    // Скорость обновления дисплея
 //----------------------------
 //читалка
-byte cursor = 0;                // Указатель (курсор) меню
-byte files = 0;                 // Количество файлов
+byte cursor = 0;            // Указатель (курсор) меню
+byte files = 0;             // Количество файлов
 //-------------
 //показ заряда
-#define REF_VOLTAGE        3.3  // Опорное напряжение ADC (3.3V для ESP32)
-#define ADC_RESOLUTION     12   // 12 бит (0-4095)
-#define VOLTAGE_DIVIDER    2.0
+#define REF_VOLTAGE     3.3 // Опорное напряжение ADC (3.3V для ESP32)
+#define ADC_RESOLUTION  12  // 12 бит (0-4095)
+#define VOLTAGE_DIVIDER 2.0
 // Напряжения для расчета процента заряда (калибровка под ваш аккумулятор). Настройки в serv меню
 #define BAT_NOMINAL_VOLTAGE 3.7 // Номинальное напряжение (3.7V)
 #define BATTERY_PIN        34   // GPIO34 (ADC1_CH6) для измерения напряжения
@@ -80,7 +80,6 @@ float mapFloat(float x, float in_min, float in_max, float out_min, float out_max
 // кей
 DB_KEYS(
   kk,
-  input,
   OLED_BRIGHTNESS,
   BAT_MIN_VOLTAGE,
   BAT_MAX_VOLTAGE,
@@ -751,6 +750,7 @@ void setup() {
     pinMode(FREE_PIN, OUTPUT);
     rnd.setSeed(getBattery() + getVoltage() / micros());
     randomSeed(getBattery() + getVoltage() / micros());
+    setCpuFrequencyMhz(80);
 }
 
 void snake() {
@@ -1002,7 +1002,7 @@ startDinoGame:                         // Начало игры
 void power_high() {
   resetButtons();
   oled.clear();
-  ui_rama("Управление на пине", true, true, true);
+  ui_rama("Управление GPIO", true, true, true);
   oled.setCursor(0,2);
   oled.print("Питание на пине:");
   oled.setCursor(0,3);
@@ -1015,7 +1015,7 @@ void power_high() {
       digitalWrite(FREE_PIN, HIGH);
       resetButtons();
       oled.clear();
-      ui_rama("Управление на пине", true, true, true);
+      ui_rama("Управление GPIO", true, true, true);
       oled.setCursor(0,2);
       oled.print("Питание на пине:");
       oled.setCursor(0,3);
@@ -1028,7 +1028,7 @@ void power_high() {
       digitalWrite(FREE_PIN, LOW);
       resetButtons();
       oled.clear();
-      ui_rama("Управление на пине", true, true, true);
+      ui_rama("Управление GPIO", true, true, true);
       oled.setCursor(0,2);
       oled.print("Питание на пине:");
       oled.setCursor(0,3);
@@ -1713,7 +1713,7 @@ void enterToReadBmpFile(String filename) {
   oled.drawBitmap(0, 0, img, 128, 64);
   oled.update();
   delete[] img;
-
+  setCpuFrequencyMhz(80);
   while (true) {
     ok.tick();
     if (ok.isClick()) {
@@ -1794,7 +1794,7 @@ void enterToReadTxtFile(String filename){
   }
 
   drawPage(file);                                   // Если с файлом все ок - рисуем первую страницу
-
+  setCpuFrequencyMhz(80);
   while (1) {                                       // Бесконечный цикл
     up.tick();                                      // Опрос кнопок
     ok.tick();
@@ -1815,6 +1815,7 @@ void enterToReadTxtFile(String filename){
 }
 
 void enterToReadFile(void) { 
+  setCpuFrequencyMhz(240);
   String filename = getFilenameByIndex(cursor);
   if (filename.endsWith(".h")) {
     enterToReadBmpFile(filename);
@@ -1825,11 +1826,14 @@ void enterToReadFile(void) {
 }
 void ShowFilesLittleFS() {
   oled.autoPrintln(false);
+  setCpuFrequencyMhz(240);
   files = getFilesCount();                    // Читаем количество файлов
   if (drawMainMenu() == false){               // Рисуем главное меню
     exit();
+    setCpuFrequencyMhz(80);
     return;
-  }                            
+  }        
+  setCpuFrequencyMhz(80);          
   while (true)
   {
     buttons_tick();                                     // Опрос кнопок
@@ -2422,6 +2426,7 @@ void flappyGame() {
 }
 
 void mini_apps_menu() {
+  setCpuFrequencyMhz(240);
   const char* mini_apps_pages[][6] = {
     { // Страница 1
       "Кубик",
@@ -2518,6 +2523,7 @@ void mini_apps_menu() {
     
     if(left.isHold() || ok.isHold()) {
       exit();
+      setCpuFrequencyMhz(80);
       return;
     }
   }
