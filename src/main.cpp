@@ -15,7 +15,6 @@
 #include <SettingsGyver.h>  // либа веб морды
 #include <GyverTimer.h>     // Либа таймера
 #include <Random16.h>       // умный рандом
-#include <vector>           // вектор
 #include "tetris.h"         // переменные для тетриса
 #include "bitmaps_oled.h"   // битмапы
 #include "menu_oled.h"      // переменные для меню
@@ -24,7 +23,6 @@
 // ------------------
 bool alert_f;               // показ ошибки в вебморде
 bool wifiConnected = false; // для wifi морды
-bool apStarted = false;     // тоже
 // пины
 #define FREE_PIN 25         // свободный пин
 #define batteryPin 34       // пин для измерения % батареи
@@ -198,7 +196,6 @@ bool connectToWiFi() {
  
   // Сброс предыдущих статусов
   wifiConnected = false;
-  apStarted = false;
   WiFi.begin(ssid, pass);
   oled.autoPrintln(true);
   oled.clear();
@@ -2454,6 +2451,7 @@ void mini_apps_menu() {
   ui_rama("Мини приложения", true, true, true);
 
   while(true) {
+    static uint32_t timer = 0;
     // Отрисовка текущей страницы
     oled.clear(0, header_height, 127, 63);
     
@@ -2487,10 +2485,18 @@ void mini_apps_menu() {
     }
 
     // Вертикальная навигация
-    if(up.isClick() && mini_apps_ptr > 0) {
+    if(up.isClick() && mini_apps_ptr > 0 || (up.isHold() && millis() - timer > 150)) {
+      if (mini_apps_ptr < 1) {
+          mini_apps_ptr++;
+      }
+      timer = millis();
       mini_apps_ptr--;
     }
-    if(down.isClick() && mini_apps_ptr < 5) {
+    if(down.isClick() && mini_apps_ptr < 5|| (down.isHold() && millis() - timer > 150)) {
+      if (mini_apps_ptr >= 5) {
+          mini_apps_ptr--;
+      }
+      timer = millis();
       mini_apps_ptr++;
     }
 
