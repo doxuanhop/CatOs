@@ -2,48 +2,34 @@ name: PlatformIO Build
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
+    branches: [ main ]  # Запускать при пуше в ветку main
+  pull_request:         # И при пул-реквестах
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          
-      - name: Cache Python dependencies
+
+      - name: Install PlatformIO CLI
+        run: |
+          pip install platformio
+
+      - name: Restore PlatformIO Cache
         uses: actions/cache@v3
         with:
           path: |
-            ~/.cache/pip
             ~/.platformio
             .pio
-          key: ${{ runner.os }}-pio-${{ hashFiles('**/platformio.ini') }}
-          restore-keys: |
-            ${{ runner.os }}-pio-
-
-      - name: Install PlatformIO Core
-        run: |
-          python -m pip install --upgrade pip
-          pip install platformio
-
-      - name: Install Project Dependencies
-        run: |
-          pio pkg install --global --no-interactive
+          key: ${{ runner.os }}-platformio-${{ hashFiles('**/platformio.ini') }}
 
       - name: Build Project
         run: |
-          pio run -v  # Добавлен verbose вывод
-
-      - name: Code Size Report
-        run: |
-          pio run -t size
-
-      - name: Check Code Style
-        run: |
-          pio check --flags "-DCPPCHECK --verbose"
-        continue-on-error: true
+          pio run  # Компиляция проекта
