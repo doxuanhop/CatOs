@@ -47,6 +47,10 @@ bool isdraw;
 //читалка
 byte cursor = 0;            // Указатель (курсор) меню
 byte files = 0;             // Количество файлов
+const int MAX_PAGE_HISTORY = 10;
+long pageHistory[MAX_PAGE_HISTORY] = {0};
+int currentHistoryIndex = -1;
+int totalPages = 0;
 //-------------
 //показ заряда
 #define REF_VOLTAGE     3.3 // Опорное напряжение ADC (3.3V для ESP32)
@@ -1734,43 +1738,50 @@ void enterToReadBmpFile(String filename) {
   }
 }
 
-void drawPage(File &file) {
+void drawPage(File &file, bool storeHistory = true) {
+  if(storeHistory) {
+      // Сохраняем текущую позицию в историю
+      currentHistoryIndex = (currentHistoryIndex + 1) % MAX_PAGE_HISTORY;
+      pageHistory[currentHistoryIndex] = file.position();
+      totalPages = min(totalPages + 1, MAX_PAGE_HISTORY);
+  }
   oled.clear();
   oled.home();
   
-  const uint8_t maxLineLength = 21; // 128px / 6px per char
+  const uint8_t maxLineLength = 21;
   uint8_t currentLine = 0;
   String buffer = "";
   String word = "";
+  int totalChars = 0;  // Счетчик символов
 
   while (file.available() && currentLine < 8) {
       char c = file.read();
-      
+      totalChars++;    // Увеличиваем счетчик для каждого символа
+
       // Собираем слова
       if (c != ' ' && c != '\n' && c != '\r') {
           word += c;
       } else {
-          // Проверяем помещается ли слово в текущую строку
           if (buffer.length() + word.length() + 1 <= maxLineLength) {
               if (!buffer.isEmpty()) buffer += ' ';
               buffer += word;
+              totalChars++; // Учитываем добавленный пробел
           } else {
-              // Переносим на новую строку
               oled.println(buffer);
               currentLine++;
               buffer = word;
           }
           word = "";
           
-          // Обработка переноса строки
           if (c == '\n' || c == '\r') {
               oled.println(buffer);
               currentLine++;
               buffer = "";
+              totalChars++; // Учитываем символ переноса
           }
       }
 
-      // Принудительный перенос слишком длинных слов
+      // Принудительный перенос длинных слов
       if (word.length() >= maxLineLength) {
           if (!buffer.isEmpty()) {
               oled.println(buffer);
@@ -1783,7 +1794,13 @@ void drawPage(File &file) {
       }
   }
 
-  // Выводим остатки
+  // Выводим статистику в монитор порта
+  Serial.print("Total characters processed: ");
+  Serial.println(totalChars);
+  Serial.print("Lines displayed: ");
+  Serial.println(currentLine);
+
+  // Вывод остатков
   if (!buffer.isEmpty() && currentLine < 8) {
       oled.println(buffer);
       currentLine++;
@@ -1800,6 +1817,9 @@ void enterToReadTxtFile(String filename){
     files = getFilesCount(); drawMainMenu();        // Смотрим количество файлов и рисуем главное меню
     file.close(); return;                           // Закрываем файл и выходим
   }
+  memset(pageHistory, 0, sizeof(pageHistory));
+  currentHistoryIndex = -1;
+  totalPages = 0;
 
   drawPage(file);                                   // Если с файлом все ок - рисуем первую страницу
   setCpuFrequencyMhz(80);
@@ -1811,10 +1831,12 @@ void enterToReadTxtFile(String filename){
       files = getFilesCount(); drawMainMenu();      // Смотрим количество файлов и рисуем главное меню
       file.close(); return;                         // Закрываем файл и выходим
     } else if (up.isClick() or up.isHold()) {       // Если нажата или удержана вверх
-      long pos = file.position() - 500;             // Смещаем положение файла вверх
-      if (pos < 0) pos = 0;                         // Если достигли нуля - не идем дальше
-      file.seek(pos);                               // Устанавливаем указатель файла
-      drawPage(file);                               // Рисуем страницу
+       if(totalPages > 0) {
+           totalPages--;
+           currentHistoryIndex = (currentHistoryIndex - 1 + MAX_PAGE_HISTORY) % MAX_PAGE_HISTORY;
+           file.seek(pageHistory[currentHistoryIndex]);
+           drawPage(file, false);                   // Не сохраняем в историю
+       }                                            // Устанавливаем указатель файла
     } else if (down.isClick() or down.isHold()) {   // Если нажата или удержана вниз
       drawPage(file);                               // Рисуем страницу
     }
