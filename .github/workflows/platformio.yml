@@ -39,15 +39,6 @@ jobs:
         run: |
           pio run -v  # Добавлен verbose вывод
 
-      - name: Upload Artifacts
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v3
-        with:
-          name: firmware-binaries
-          path: |
-            .pio/build/**/*.bin
-            .pio/build/**/*.hex
-
       - name: Code Size Report
         run: |
           pio run -t size
