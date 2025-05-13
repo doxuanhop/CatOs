@@ -676,6 +676,7 @@ void servmode() {
   ui_rama("Версия " FIRMWARE_VERSION, true, true, true);
   
   while(true) {
+    static uint32_t timer = 0;
     // Очищаем только область меню (начиная с 3 строки)
     oled.clear(0, header_height, 127, 63);
     
@@ -697,10 +698,18 @@ void servmode() {
 
     buttons_tick();
 
-    if(up.isClick() && serv_apps_ptr > 0) {
+    if(up.isClick() && serv_apps_ptr < 5|| (up.isHold() && millis() - timer > 150)) {
+      if (serv_apps_ptr < 1) {
+          serv_apps_ptr++;
+      }
+      timer = millis();
       serv_apps_ptr--;
     }
-    if(down.isClick() && serv_apps_ptr < serv_apps_count - 1) {
+    if(down.isClick() && serv_apps_ptr < 5|| (down.isHold() && millis() - timer > 150)) {
+      if (serv_apps_ptr >= 5) {
+          serv_apps_ptr--;
+      }
+      timer = millis();
       serv_apps_ptr++;
     }
 
@@ -1632,6 +1641,15 @@ String getFilenameByIndex(int idx) {
 }
 /* ======================================================================= */
 /* ============================ Главное меню ============================= */
+void update_cursor() {
+  for (uint8_t i = 0; i < 6 && i < files; i++) {    // Проходимся от 2й до 8й строки оледа
+    oled.setCursor(0, i + 2);                       // Ставим курсор на нужную строку
+    oled.print(getFilenameByIndex(cursor < 6 ? i : i + (cursor - 5)));  // Выводим имя файла
+  }
+  oled.setCursor(0, constrain(cursor, 0, 5) + 2); oled.print(" ");      // Чистим место под указатель
+  oled.setCursor(0, constrain(cursor, 0, 5) + 2); oled.print(">");      // Выводим указатель на нужной строке
+  oled.update();                                    // Выводим картинку
+}
 bool drawMainMenu(void) {                           // Отрисовка главного меню
   oled.clear();                                     // Очистка
   oled.home();                                      // Возврат на 0,0
@@ -1649,14 +1667,7 @@ bool drawMainMenu(void) {                           // Отрисовка гла
     return false;
   }
   oled.print("НАЙДЕННЫЕ ФАЙЛЫ: "); oled.print(files);   // Выводим кол-во файлов
-  for (uint8_t i = 0; i < 6 && i < files; i++) {    // Проходимся от 2й до 8й строки оледа
-    oled.setCursor(0, i + 2);                       // Ставим курсор на нужную строку
-    oled.print(getFilenameByIndex(cursor < 6 ? i : i + (cursor - 5)));  // Выводим имя файла
-  }
-
-  oled.setCursor(0, constrain(cursor, 0, 5) + 2); oled.print(" ");      // Чистим место под указатель
-  oled.setCursor(0, constrain(cursor, 0, 5) + 2); oled.print(">");      // Выводим указатель на нужной строке
-  oled.update();                                    // Выводим картинку
+  update_cursor();
   return true;
 }
 /* ======================================================================= */
@@ -1834,13 +1845,15 @@ void ShowFilesLittleFS() {
   while (true)
   {
     buttons_tick();                                     // Опрос кнопок
-
-    if (up.isClick() or up.isHold()) {                // Если нажата или удержана кнопка вверх
+    static uint32_t timer = 0;                          // таймер
+    if (up.isClick() || (up.isHold() && millis() - timer > 50)) {                // Если нажата или удержана кнопка вверх
       cursor = constrain(cursor - 1, 0, files - 1);   // Двигаем курсор
-      drawMainMenu();                                 // Обновляем главное меню
-    } else if (down.isClick() or up.isHold()) {       // Если нажата или удержана кнопка вниз
+      timer = millis();
+      update_cursor();                                // Обновляем главное меню
+    } else if (down.isClick() || (down.isHold() && millis() - timer > 50)) {       // Если нажата или удержана кнопка вниз
       cursor = constrain(cursor + 1, 0, files - 1);   // Двигаем курсор
-      drawMainMenu();                                 // Обновляем главное меню
+      timer = millis();
+      update_cursor();                                 // Обновляем главное меню
     } else if (ok.isHold()) {                         // Если удержана ОК
       exit();                                         // Выход                        
       return;                                         // Выход
