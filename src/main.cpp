@@ -47,7 +47,7 @@ bool isdraw;
 //читалка
 byte cursor = 0;            // Указатель (курсор) меню
 byte files = 0;             // Количество файлов
-const int MAX_PAGE_HISTORY = 10;
+const int MAX_PAGE_HISTORY = 150;
 long pageHistory[MAX_PAGE_HISTORY] = {0};
 int currentHistoryIndex = -1;
 int totalPages = 0;
@@ -1740,73 +1740,71 @@ void enterToReadBmpFile(String filename) {
 
 void drawPage(File &file, bool storeHistory = true) {
   if(storeHistory) {
-      // Сохраняем текущую позицию в историю
-      currentHistoryIndex = (currentHistoryIndex + 1) % MAX_PAGE_HISTORY;
-      pageHistory[currentHistoryIndex] = file.position();
-      totalPages = min(totalPages + 1, MAX_PAGE_HISTORY);
+    // Сохраняем текущую позицию перед отрисовкой
+    currentHistoryIndex = (currentHistoryIndex + 1) % MAX_PAGE_HISTORY;
+    pageHistory[currentHistoryIndex] = file.position();
+    totalPages = min(totalPages + 1, MAX_PAGE_HISTORY);
   }
   oled.clear();
   oled.home();
   
-  const uint8_t maxLineLength = 21;
+  const uint8_t maxLineLength = 37;
   uint8_t currentLine = 0;
   String buffer = "";
   String word = "";
-  int totalChars = 0;  // Счетчик символов
+  uint8_t spaceLeft = maxLineLength;
 
   while (file.available() && currentLine < 8) {
-      char c = file.read();
-      totalChars++;    // Увеличиваем счетчик для каждого символа
+    char c = file.read();
+    
+    if (c == '\n' || c == '\r') {
+      if (!buffer.isEmpty()) {
+        oled.println(buffer);
+        currentLine++;
+        buffer = "";
+        spaceLeft = maxLineLength;
+      }
+      continue;
+    }
 
-      // Собираем слова
-      if (c != ' ' && c != '\n' && c != '\r') {
-          word += c;
+    if (c == ' ') {
+      if (buffer.length() + word.length() + 1 <= maxLineLength) {
+        buffer += word;
+        buffer += ' ';
+        spaceLeft = maxLineLength - buffer.length();
+        word = "";
       } else {
-          if (buffer.length() + word.length() + 1 <= maxLineLength) {
-              if (!buffer.isEmpty()) buffer += ' ';
-              buffer += word;
-              totalChars++; // Учитываем добавленный пробел
-          } else {
-              oled.println(buffer);
-              currentLine++;
-              buffer = word;
-          }
-          word = "";
-          
-          if (c == '\n' || c == '\r') {
-              oled.println(buffer);
-              currentLine++;
-              buffer = "";
-              totalChars++; // Учитываем символ переноса
-          }
+        oled.println(buffer);
+        currentLine++;
+        buffer = word + ' ';
+        spaceLeft = maxLineLength - buffer.length();
+        word = "";
       }
+      continue;
+    }
 
-      // Принудительный перенос длинных слов
-      if (word.length() >= maxLineLength) {
-          if (!buffer.isEmpty()) {
-              oled.println(buffer);
-              currentLine++;
-              buffer = "";
-          }
-          oled.println(word.substring(0, maxLineLength));
-          currentLine++;
-          word = word.substring(maxLineLength);
-      }
-  }
+    word += c;
 
-  // Выводим статистику в монитор порта
-  Serial.print("Total characters processed: ");
-  Serial.println(totalChars);
-  Serial.print("Lines displayed: ");
-  Serial.println(currentLine);
-
-  // Вывод остатков
-  if (!buffer.isEmpty() && currentLine < 8) {
+    if (word.length() > spaceLeft) {
+      String part = word.substring(0, spaceLeft);
+      buffer += part;
       oled.println(buffer);
       currentLine++;
+      
+      word = word.substring(spaceLeft);
+      buffer = "";
+      spaceLeft = maxLineLength;
+      
+      if (currentLine >= 8) break;
+    }
+  }
+  // Вывод остатков
+  if (!buffer.isEmpty() && currentLine < 8) {
+    oled.println(buffer);
+    currentLine++;
   }
   if (!word.isEmpty() && currentLine < 8) {
-      oled.println(word);
+    oled.println(word);
   }
 
   oled.update();
@@ -1831,12 +1829,12 @@ void enterToReadTxtFile(String filename){
       files = getFilesCount(); drawMainMenu();      // Смотрим количество файлов и рисуем главное меню
       file.close(); return;                         // Закрываем файл и выходим
     } else if (up.isClick() or up.isHold()) {       // Если нажата или удержана вверх
-       if(totalPages > 0) {
-           totalPages--;
-           currentHistoryIndex = (currentHistoryIndex - 1 + MAX_PAGE_HISTORY) % MAX_PAGE_HISTORY;
-           file.seek(pageHistory[currentHistoryIndex]);
-           drawPage(file, false);                   // Не сохраняем в историю
-       }                                            // Устанавливаем указатель файла
+      if(totalPages > 0) {
+        totalPages--;
+        currentHistoryIndex = (currentHistoryIndex - 1 + MAX_PAGE_HISTORY) % MAX_PAGE_HISTORY;
+        file.seek(pageHistory[currentHistoryIndex]);
+        drawPage(file, false);                      // Не сохраняем в историю
+      }                                             // Устанавливаем указатель файла
     } else if (down.isClick() or down.isHold()) {   // Если нажата или удержана вниз
       drawPage(file);                               // Рисуем страницу
     }
