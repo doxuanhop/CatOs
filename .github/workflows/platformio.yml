@@ -30,6 +30,13 @@ jobs:
             .pio
           key: ${{ runner.os }}-platformio-${{ hashFiles('**/platformio.ini') }}
 
-      - name: Build Project
+      - name: Build Project with logs
         run: |
           pio run -v  # Компиляция проекта
+              - name: Build Project
+      - name: Build Project without logs
+        run: |
+          pio run     # Компиляция проекта
+              - name: Build Project
+
+
