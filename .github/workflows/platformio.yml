@@ -36,6 +36,5 @@ jobs:
       - name: Build Project without logs
         run: |
           pio run     # Компиляция проекта
-              - name: Build Project
 
 
