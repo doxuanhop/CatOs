@@ -2732,7 +2732,60 @@ void settingsMenu() {
     }
   }
 }
-void loop() {
+void Utilities_menu() {
+  const char* settings_items[] = {
+    "Секундомер",
+    "Таймер",
+    "Выход"
+};
+  const uint8_t settings_apps_count = sizeof(settings_items)/sizeof(settings_items[0]);
+  int8_t settings_apps_ptr = 0;
+  const uint8_t header_height = 16; // Высота заголовка с линией
+
+  ui_rama("Утилиты", true, true, true);
+  
+  while(true) {
+    // Очищаем только область меню (начиная с 3 строки)
+    oled.clear(0, header_height, 127, 63);
+    
+    // Рисуем только первый видимый пункт
+    oled.setCursor(2, header_height/8 + 0); // 3 строка (16px)
+    oled.print(settings_apps_ptr == 0 ? ">" : " ");
+    oled.print(settings_items[0]);
+
+    // Рисуем остальные пункты если есть
+    if(settings_apps_count > 1) {
+      for(uint8_t i = 1; i < settings_apps_count; i++) {
+        oled.setCursor(2, header_height/8 + i); // Следующие строки
+        oled.print(settings_apps_ptr == i ? ">" : " ");
+        oled.print(settings_items[i]);
+      }
+    }
+    
+    oled.update();
+
+    buttons_tick();
+
+    if(up.isClick() && settings_apps_ptr > 0) {
+      settings_apps_ptr--;
+    }
+    if(down.isClick() && settings_apps_ptr < settings_apps_count - 1) {
+      settings_apps_ptr++;
+    }
+
+    if(ok.isClick()) {
+      switch(settings_apps_ptr) {
+        case 0: stopwatch(); break;
+        case 1: timer_oled(); break;
+        case 2: exit(); return;
+      }
+      // Перерисовываем интерфейс после возврата
+      ui_rama("Утилиты", true, true, true);
+    }
+  }
+}
+void menu_default() {
+  while (true) {
     static uint32_t timer = 0;
     buttons_tick();
 
@@ -2770,9 +2823,12 @@ void loop() {
         case 3: power_high(); break;
         case 4: calcul(); break;
         case 5: create_settings(); break;
-        case 6: stopwatch(); break;
-        case 7: timer_oled(); break;
-
+        case 6: Utilities_menu(); break;
+        case 7: break;
       }
     }
-  }
+    }
+}
+void loop() {
+  menu_default();
+}
