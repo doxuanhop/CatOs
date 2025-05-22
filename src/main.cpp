@@ -29,8 +29,8 @@ bool wifiConnected = false; // для wifi морды
 //кнопки
 #define UP_PIN 26           // верх
 #define DOWN_PIN 21         // вниз
-#define RIGHT_PIN 14        // право
-#define LEFT_PIN 12         // влево
+#define RIGHT_PIN 12        // право
+#define LEFT_PIN 14         // влево
 #define OK_PIN 22           // ОК
 //----------------------------
 // калькулятор
@@ -1867,13 +1867,17 @@ void ShowFilesLittleFS() {
     buttons_tick();                                     // Опрос кнопок
     static uint32_t timer = 0;                          // таймер
     if (up.isClick() || (up.isHold() && millis() - timer > 50)) {                // Если нажата или удержана кнопка вверх
+      setCpuFrequencyMhz(240);
       cursor = constrain(cursor - 1, 0, files - 1);   // Двигаем курсор
       timer = millis();
-      update_cursor();                                // Обновляем главное меню
+      update_cursor();    
+      setCpuFrequencyMhz(80);
     } else if (down.isClick() || (down.isHold() && millis() - timer > 50)) {       // Если нажата или удержана кнопка вниз
+      setCpuFrequencyMhz(240);
       cursor = constrain(cursor + 1, 0, files - 1);   // Двигаем курсор
       timer = millis();
       update_cursor();                                 // Обновляем главное меню
+      setCpuFrequencyMhz(80);
     } else if (ok.isHold()) {                         // Если удержана ОК
       exit();                                         // Выход                        
       return;                                         // Выход
@@ -2768,7 +2772,7 @@ void loop() {
         case 5: create_settings(); break;
         case 6: stopwatch(); break;
         case 7: timer_oled(); break;
-          // И все остальные
+
       }
     }
   }
