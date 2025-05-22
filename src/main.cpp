@@ -381,6 +381,13 @@ void exit() {
   drawbattery();
   oled.update();
 }
+void exit_without_update() {
+  oled.clear();
+  resetButtons();
+  oled.setScale(1);
+  drawbattery();
+  oled.update();
+}
 bool draw_logo() {
   uint32_t tmr = millis();
   bool btn_pressed = false;
@@ -847,7 +854,7 @@ void snake() {
 
     // Выход
     if (ok.isHold()){
-      exit();
+      exit_without_update();
       return;
     }  
 }
@@ -879,7 +886,7 @@ startDinoGame:                         // Начало игры
       down.setTimeout(300);
       ok.setTimeout(300);
       ok.setStepTimeout(400);
-      exit();
+      exit_without_update();
       return;
     }                               
 
@@ -986,7 +993,7 @@ startDinoGame:                         // Начало игры
               down.setTimeout(300);
               ok.setTimeout(300);
               ok.setStepTimeout(400);
-              exit();
+              exit_without_update();
               return;
             }                                                            // Нажали на левую - вернулись в меню                                                                          // Уходим в сон по необходимости
             }
@@ -1566,7 +1573,7 @@ void playTetrisGame() {
     oled.setCursor(0, 0); oled.print("ТЕТРИС");                                                                    // Выводим рекорд
     if (ok.isHold()) {
       lineCleanCounter = 0;
-      exit();
+      exit_without_update();
       break;
     }
     tetrisRoutine();
@@ -1948,7 +1955,7 @@ void dice_random() {
     }
     
     if(ok.isHold()) {
-      exit();
+      exit_without_update();
       return;
     }
   }
@@ -2010,7 +2017,7 @@ void stopwatch() {
       
       // Выход по долгому нажатию OK
       if(ok.isHold()) {
-          exit();
+          exit_without_update();
           return;
       }
   }
@@ -2152,7 +2159,7 @@ void timer_oled() {
       
       // Выход по долгому нажатию OK
       if(ok.isHold() && state != ALARM) {
-          exit();
+          exit_without_update();
           return;
       }
   }
@@ -2314,7 +2321,7 @@ void pongGame() {
           up.setTimeout(300);
           down.setTimeout(300);
           score1 = score2 = 0;
-          exit();
+          exit_without_update();
           return;
       }
       
@@ -2442,7 +2449,7 @@ void flappyGame() {
               gameOver = false;
             }
             if(left.isClick() || ok.isHold()) {
-              exit();
+              exit_without_update();
               return;
             }
           }
@@ -2451,7 +2458,7 @@ void flappyGame() {
       oled.update();
       
       if(left.isClick() || ok.isHold()) {
-          exit();
+          exit_without_update();
           return;
       }
       
