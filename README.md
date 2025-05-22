@@ -48,3 +48,7 @@ pio run
 ```bash
 pio run --target upload 
 ```
+## Кредиты
+- Спасибо [Алекс Гайверу](https://github.com/GyverLibs/) за библиотеки ❤
+- Спасибо проекту [MicroReader](https://github.com/Nich1con/microReader/) за некоторые функции и игры.
+## Сделано с любовью ❤
