@@ -62,11 +62,6 @@ int totalPages = 0;
 float batteryVoltage = 0;
 int batteryPercentage = 0;
 //----------------------------------
-const uint8_t* hackingPcFrames[] = {hacking_pc_0, hacking_pc_1, hacking_pc_2};
-const int frameCount = 3;
-int currentFrame = 0;
-unsigned long previousMillis = 0;
-const long frameInterval = 150;
 //объекты
 GyverOLED<SSD1306_128x64, OLED_BUFFER, OLED_SPI, CS, DC, RES> oled;
 GButton up(UP_PIN);
@@ -767,6 +762,8 @@ void setup() {
     if (draw_logo()) {
       servmode();
     }
+    drawStaticMenu();
+    updatePointer();
     pinMode(FREE_PIN, OUTPUT);
     rnd.setSeed(getBattery() + getVoltage() / micros());
     randomSeed(getBattery() + getVoltage() / micros());
@@ -2797,6 +2794,8 @@ void Utilities_menu() {
 void menu_default() {
   while (true) {
     static uint32_t timer = 0;
+    buttons_tick();
+
     static uint32_t batteryTimer = millis(); // Таймер для батареи
     buttons_tick();
 
@@ -2832,38 +2831,11 @@ void menu_default() {
         case 4: calcul(); break;
         case 5: create_settings(); break;
         case 6: Utilities_menu(); break;
-        case 7: return;
+        case 7: break;
       }
     }
     }
 }
-void main_menu_default() {
-  drawbattery();
-  while (true) {
-    unsigned long currentMillis = millis();
-    static uint32_t batteryTimer = millis(); // Таймер для батареи
-    if (millis() - batteryTimer > 5000) {
-        batteryTimer = millis();
-        drawbattery();
-    }
-    if (currentMillis - previousMillis >= frameInterval) {
-      previousMillis = currentMillis;
-
-      oled.clear();
-      oled.drawBitmap(0, 0, hackingPcFrames[currentFrame], 128, 64);
-      oled.update();
-
-      currentFrame = (currentFrame + 1) % frameCount;
-    }
-    buttons_tick();
-    if (ok.isClick()){
-      drawStaticMenu();
-      updatePointer();
-      menu_default();
-      return;
-    }
-  }
-}
 void loop() {
-  main_menu_default();
+  menu_default();
 }
