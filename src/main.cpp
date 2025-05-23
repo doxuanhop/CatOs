@@ -767,8 +767,6 @@ void setup() {
     if (draw_logo()) {
       servmode();
     }
-    drawStaticMenu();
-    updatePointer();
     pinMode(FREE_PIN, OUTPUT);
     rnd.setSeed(getBattery() + getVoltage() / micros());
     randomSeed(getBattery() + getVoltage() / micros());
@@ -2860,8 +2858,9 @@ void main_menu_default() {
     buttons_tick();
     if (ok.isClick()){
       drawStaticMenu();
-      update_cursor();
+      updatePointer();
       menu_default();
+      return;
     }
   }
 }
