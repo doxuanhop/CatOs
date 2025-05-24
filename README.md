@@ -34,22 +34,26 @@
 - [Random16](https://github.com/GyverLibs/Random16)
 - PS. Все библиотеки от гайвера
 
-## <a id="images">Подготовка и вывод изображений</a>
-### Особенности отображения картинок
-- Дисплей монохромный и имеет разрешение 128х64 точки
-- Изображения хранятся и парсятся в текстовом формате (в виде массива)
-- Используемый формат файлов - **.h**
-- Для подготовки изображения используется **image-processor** от Гайвера
-### Подготовка изображения
-1. Запустите **imageProcessor.exe** (при необходимости потребуется установить или обновить java)
-2. В левом нижнем углу утилиты установите соответствующие настройки вывода:
-![IMGPC1](https://github.com/Nich1con/microReader/blob/main/manual/imgProcSettings.png)
-3. Добавьте изображение через **OPEN IMAGE**
-4. Настройте **размер** и **порог** до получения оптимального результата: 
-![IMGPC2](https://github.com/Nich1con/microReader/blob/main/manual/imgProc.png)
-5. Сохраните файл нажав **SAVE**, в папке **image-processor** появится файл **.h** с примерно таким содержанием:
-![IMGPC3](https://github.com/Nich1con/microReader/blob/main/manual/imgRes.png)
-6. Переименуйте и загрузите файл на устройство
+## Создание изображений и загрузка
+1. Запустите [imageProcessor.exe](https://github.com/AlexGyver/imageProcessor) (установите java)
+
+![IMG1](assets/img1.png)
+
+2. Откройте изображение
+
+![IMG2](assets/img2.png)
+
+3. Настройте размер и порог изображения для получения лучшего результата
+
+![IMG3](assets/img3.png)
+
+4. Сделайте инверт цвета (белый цвет будет отбражатся на экране). И убедитесь что Result height и Result widht стоят также как и на изображении
+
+![IMG4](assets/img4.png)
+
+5. Сохраните файл нажав SAVE, в папке image-processor появится файл .h . Также можно переименовать этот файл.
+
+![IMG5](assets/img5.png)
 
 ## Установка
 1. Установите [PlatformIO](https://platformio.org/)
