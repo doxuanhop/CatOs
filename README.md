@@ -53,15 +53,22 @@
 
 ## Установка
 1. Установите [PlatformIO](https://platformio.org/)
+```bash
+pip install platformio
+```
 2. Клонируйте репозиторий:
 ```bash
 git clone https://github.com/CatDevCode/CatOs.git
 ```
-3. Сбилдите проект
+3. Перейдите в папку с проектом:
+```bash
+cd CatOs
+```
+4. Сбилдите проект
 ```bash
 pio run
 ```
-4. Загрузите проект на ESP32
+5. Загрузите проект на ESP32
 ```bash
 pio run --target upload 
 ```
