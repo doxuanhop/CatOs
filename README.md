@@ -26,14 +26,6 @@
 <img src="assets/pcb_with_components.jpg" width="600" height="600" alt="LogoPCB">
 
 
-## Библиотеки
-- [GyverOled](https://github.com/GyverLibs/GyverOLED/)
-- [GyverButton(Старое, но работает отлично)](https://github.com/GyverLibs/GyverButton)
-- [GyverTimer(Старое, но для совместимости)](https://github.com/GyverLibs/GyverTimer)
-- [Settings](https://github.com/GyverLibs/Settings)
-- [Random16](https://github.com/GyverLibs/Random16)
-- PS. Все библиотеки от гайвера
-
 ## Создание изображений и загрузка
 1. Запустите [imageProcessor.exe](https://github.com/AlexGyver/imageProcessor) (установите java)
 
@@ -54,6 +46,14 @@
 5. Сохраните файл нажав SAVE, в папке image-processor появится файл .h . Также можно переименовать этот файл.
 
 ![IMG5](assets/img5.png)
+
+## Библиотеки
+- [GyverOled](https://github.com/GyverLibs/GyverOLED/)
+- [GyverButton(Старое, но работает отлично)](https://github.com/GyverLibs/GyverButton)
+- [GyverTimer(Старое, но для совместимости)](https://github.com/GyverLibs/GyverTimer)
+- [Settings](https://github.com/GyverLibs/Settings)
+- [Random16](https://github.com/GyverLibs/Random16)
+- PS. Все библиотеки от гайвера
 
 ## Установка
 1. Установите [PlatformIO](https://platformio.org/)
