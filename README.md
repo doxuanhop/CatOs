@@ -20,7 +20,7 @@
 - Литий-ионный аккумулятор
 
 ## PCB
-- Сыллка на проект [Easy Eda](https://oshwlab.com/oleggator2013/catos_catdevcode)
+- Ссылка на проект [Easy Eda](https://oshwlab.com/oleggator2013/catos_catdevcode)
 <img src="assets/pcb1.jpg" width="600" height="350" alt="LogoPCB">
 <img src="assets/pcb2.jpg" width="600" height="350" alt="LogoPCB">
 <img src="assets/pcb_with_components.jpg" width="600" height="600" alt="LogoPCB">
