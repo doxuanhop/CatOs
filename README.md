@@ -79,4 +79,5 @@ pio run --target upload
 ## Кредиты
 - Спасибо [Алексу Гайверу](https://github.com/GyverLibs/) за библиотеки ❤
 - Спасибо проекту [MicroReader](https://github.com/Nich1con/microReader/) за некоторые функции и игры.
+## Проект открыт для Pull-реквестов
 ## Сделано с любовью ❤
