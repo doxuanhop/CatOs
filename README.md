@@ -20,7 +20,7 @@
 - Литий-ионный аккумулятор
 
 ## PCB
-- Ссылка на проект [Easy Eda](https://oshwlab.com/oleggator2013/catos_catdevcode)
+- Ссылка на проект [EasyEDA](https://oshwlab.com/oleggator2013/catos_catdevcode)
 <img src="assets/pcb1.jpg" width="600" height="350" alt="LogoPCB">
 <img src="assets/pcb2.jpg" width="600" height="350" alt="LogoPCB">
 <img src="assets/pcb_with_components.jpg" width="600" height="600" alt="LogoPCB">
@@ -39,7 +39,7 @@
 
 ![IMG3](assets/img3.png)
 
-4. Сделайте инверт цвета (белый цвет будет отбражатся на экране). И убедитесь что Result height и Result widht стоят также как и на изображении
+4. Сделайте инверсию цвета (белый цвет будет отображаться на экране). И убедитесь что Result height и Result width стоят также как на изображении
 
 ![IMG4](assets/img4.png)
 
@@ -77,6 +77,6 @@ pio run
 pio run --target upload 
 ```
 ## Кредиты
-- Спасибо [Алекс Гайверу](https://github.com/GyverLibs/) за библиотеки ❤
+- Спасибо [Алексу Гайверу](https://github.com/GyverLibs/) за библиотеки ❤
 - Спасибо проекту [MicroReader](https://github.com/Nich1con/microReader/) за некоторые функции и игры.
 ## Сделано с любовью ❤
