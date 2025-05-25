@@ -1619,7 +1619,7 @@ int getFilesCount() {
   File file = root.openNextFile();
   while (file) {
     String filename = file.name();
-    if (filename.endsWith(".txt") || filename.endsWith(".h") || filename.endsWith(".catos")) {
+    if (filename.endsWith(".txt") || filename.endsWith(".h")) {
       count++;
     }
     file.close();
@@ -1635,7 +1635,7 @@ String getFilenameByIndex(int idx) {
   File file = root.openNextFile();
   while (file) {
     String filename = file.name();
-    if (filename.endsWith(".txt") || filename.endsWith(".h") || filename.endsWith(".catos")) {
+    if (filename.endsWith(".txt") || filename.endsWith(".h")) {
       if (i == idx) {
         String name = "/" + filename;
         file.close();
