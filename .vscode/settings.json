@@ -4,6 +4,12 @@
         "vector": "cpp",
         "cmath": "cpp",
         "cstdint": "cpp",
-        "tuple": "cpp"
+        "tuple": "cpp",
+        "deque": "cpp",
+        "list": "cpp",
+        "string": "cpp",
+        "unordered_map": "cpp",
+        "unordered_set": "cpp",
+        "system_error": "cpp"
     }
 }

@@ -1,4 +1,4 @@
-#define FIRMWARE_VERSION "v0.1.1D"
+#define FIRMWARE_VERSION "v0.1.2D"
 // дисплей
 #define RES 17
 #define DC 16
@@ -1055,7 +1055,7 @@ void power_high() {
       oled.update();
     }
     if(ok.isClick()) {
-      exit();
+      exit_without_update();
       return;
     }
 
@@ -1619,7 +1619,7 @@ int getFilesCount() {
   File file = root.openNextFile();
   while (file) {
     String filename = file.name();
-    if (filename.endsWith(".txt") || filename.endsWith(".h")) {
+    if (filename.endsWith(".txt") || filename.endsWith(".h") || filename.endsWith(".catos")) {
       count++;
     }
     file.close();
@@ -1635,7 +1635,7 @@ String getFilenameByIndex(int idx) {
   File file = root.openNextFile();
   while (file) {
     String filename = file.name();
-    if (filename.endsWith(".txt") || filename.endsWith(".h")) {
+    if (filename.endsWith(".txt") || filename.endsWith(".h") || filename.endsWith(".catos")) {
       if (i == idx) {
         String name = "/" + filename;
         file.close();
@@ -1854,10 +1854,11 @@ void enterToReadFile(void) {
   String filename = getFilenameByIndex(cursor);
   if (filename.endsWith(".h")) {
     enterToReadBmpFile(filename);
-  } else {
+  } else if(filename.endsWith(".txt")) {
     // Вызов существующей функции для текстовых файлов
     enterToReadTxtFile(filename);
-  }                      // Режим чтения файла
+  } else {
+  }                
 }
 void ShowFilesLittleFS() {
   oled.autoPrintln(false);
@@ -2135,7 +2136,7 @@ void timer_oled() {
               oled.invertDisplay(millis() % 500 < 250);
               oled.setCursor(0, 3);
               oled.setScale(2);
-              oled.print("   ВРЕМЯ!");
+              oled.print("   ВРЕМЯ");
               
               // Отключение сигнала
               if(ok.isClick()) {
@@ -2149,11 +2150,11 @@ void timer_oled() {
       oled.setScale(1);
       oled.setCursor(0, 7);
       switch(state) {
-          case SET_HOURS: oled.print("Уст. часы   OK->"); break;
-          case SET_MINS:  oled.print("Уст. минуты OK->"); break;
+          case SET_HOURS: oled.print("Уст. часы     OK->"); break;
+          case SET_MINS:  oled.print("Уст. минуты   OK->"); break;
           case SET_SECS:  oled.print("Уст. секунды СТАРТ"); break;
-          case RUNNING:   oled.print("  ОСТАНОВКА ->OK"); break;
-          case ALARM:     oled.print("   ОК - СБРОС   "); break;
+          case RUNNING:   oled.print("  ОСТАНОВКА   ->OK"); break;
+          case ALARM:     oled.print("   ОК - СБРОС     "); break;
       }
       oled.update();
       
@@ -2743,6 +2744,7 @@ void Utilities_menu() {
   const char* settings_items[] = {
     "Секундомер",
     "Таймер",
+    "Управление GPIO",
     "Выход"
 };
   const uint8_t settings_apps_count = sizeof(settings_items)/sizeof(settings_items[0]);
@@ -2784,7 +2786,8 @@ void Utilities_menu() {
       switch(settings_apps_ptr) {
         case 0: stopwatch(); break;
         case 1: timer_oled(); break;
-        case 2: exit(); return;
+        case 2: power_high(); break;
+        case 3: exit(); return;
       }
       // Перерисовываем интерфейс после возврата
       ui_rama("Утилиты", true, true, true);
@@ -2824,14 +2827,12 @@ void menu_default() {
     }
     if (ok.isClick()) {   // Нажатие на ОК - переход в пункт меню
       switch (pointer) {  // По номеру указателей располагаем вложенные функции (можно вложенные меню)
-        case 0: oled.clear(); mini_apps_menu(); break;  // По нажатию на ОК при наведении на 0й пункт вызвать функцию
+        case 0: mini_apps_menu(); break;  // По нажатию на ОК при наведении на 0й пункт вызвать функцию
         case 1: settingsMenu(); break;
         case 2: ShowFilesLittleFS(); break;
-        case 3: power_high(); break;
-        case 4: calcul(); break;
-        case 5: create_settings(); break;
-        case 6: Utilities_menu(); break;
-        case 7: break;
+        case 3: calcul(); break;
+        case 4: create_settings(); break;
+        case 5: Utilities_menu(); break;
       }
     }
     }
