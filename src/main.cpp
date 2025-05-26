@@ -1,5 +1,5 @@
 #define FIRMWARE_VERSION "v0.1.2D"
-// дисплей
+// настройка дисплей
 #define RES 17
 #define DC 16
 #define CS 5
