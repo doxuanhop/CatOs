@@ -1,5 +1,6 @@
 # CatOS Прошивка игровой консоли
-
+| *> CatOs Pro <* | [CatOs Lite](https://github.com/CatDevCode/CatOs_Lite/) |
+| --- | --- |
 <img src="assets/logo.jpg" width="400" height="350" alt="LogoPCB">
 
 Прошивка для портативной игровой консоли на базе ESP32 с OLED-дисплеем. Включает набор игр, утилит и системных инструментов.
