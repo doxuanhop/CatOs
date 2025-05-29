@@ -1736,9 +1736,11 @@ void enterToReadBmpFile(String filename) {
   while (true) {
     ok.tick();
     if (ok.isClick()) {
+      setCpuFrequencyMhz(240);
       file.close();
       files = getFilesCount();
       drawMainMenu();
+      setCpuFrequencyMhz(80);
       return;
     }
     yield();
@@ -1833,8 +1835,11 @@ void enterToReadTxtFile(String filename){
     ok.tick();
     down.tick();
     if (ok.isClick()) {                             // Если ок нажат
+      setCpuFrequencyMhz(240);
       files = getFilesCount(); drawMainMenu();      // Смотрим количество файлов и рисуем главное меню
-      file.close(); return;                         // Закрываем файл и выходим
+      file.close(); 
+      setCpuFrequencyMhz(80);
+      return;                         // Закрываем файл и выходим
     } else if (up.isClick() or up.isHold()) {       // Если нажата или удержана вверх
       if(totalPages > 0) {
         totalPages--;
