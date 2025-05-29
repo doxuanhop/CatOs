@@ -195,7 +195,7 @@ bool connectToWiFi() {
   WiFi.mode(WIFI_AP_STA);
   if(ssid.isEmpty()) {
       Serial.println("WiFi SSID not configured!");
-      return false;  // Return false if SSID is empty
+      return false;
   }
  
   // Сброс предыдущих статусов
@@ -2800,9 +2800,7 @@ void menu_default() {
     buttons_tick();
 
     static uint32_t batteryTimer = millis(); // Таймер для батареи
-    buttons_tick();
-
-    // Автоматическое обновление батареи каждые 30 секунд
+    // Автоматическое обновление батареи каждые 5 секунд
     if (millis() - batteryTimer > 5000) {
         batteryTimer = millis();
         drawbattery();
