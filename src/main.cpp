@@ -20,6 +20,7 @@
 #include "menu_oled.h"      // переменные для меню
 #include "pong.h"           // понг
 #include "flappy_bird.h"    // птичка
+#include "arkanoid.h"       // арнакоид
 // ------------------
 bool alert_f;               // показ ошибки в вебморде
 bool wifiConnected = false; // для wifi морды
@@ -2472,6 +2473,217 @@ void flappyGame() {
   }
 }
 
+void initArkanoid() {
+    right.setStepTimeout(20);
+    left.setStepTimeout(20);
+    paddleX = (128 - PADDLE_WIDTH_ark) / 2;
+    ballX_ark = random(20, 108);
+    ballY_ark = 40;
+    ballSpeedX_ark = random(0, 2) ? 1 : -1;
+    ballSpeedY_ark = -1;
+    lives = 5;
+    score_ark = 0;
+    gameRunning = true;
+
+    // Инициализация кирпичей
+    for (int row = 0; row < BRICK_ROWS; row++) {
+        for (int col = 0; col < BRICK_COLS; col++) {
+            bricks[row][col] = true;
+        }
+    }
+}
+
+void drawPaddle() {
+    oled.rect(paddleX, 60, paddleX + PADDLE_WIDTH_ark - 1, 60 + PADDLE_HEIGHT_ark - 1, OLED_FILL);
+}
+
+void drawBall_ark() {
+    oled.rect(ballX_ark - BALL_SIZE_ark/2, ballY_ark - BALL_SIZE_ark/2, 
+             ballX_ark + BALL_SIZE_ark/2, ballY_ark + BALL_SIZE_ark/2, OLED_FILL);
+}
+
+void drawBricks() {
+    for (int row = 0; row < BRICK_ROWS; row++) {
+        for (int col = 0; col < BRICK_COLS; col++) {
+            if (bricks[row][col]) {
+                int x = col * (BRICK_WIDTH + BRICK_SPACING);
+                int y = row * (BRICK_HEIGHT + BRICK_SPACING) + 5;
+                oled.rect(x, y, x + BRICK_WIDTH - 1, y + BRICK_HEIGHT - 1);
+            }
+        }
+    }
+}
+
+void moveBall() {
+    // Движение шара
+    ballX_ark += ballSpeedX_ark; 
+    ballY_ark += ballSpeedY_ark; 
+
+    // Отскок от стен
+    if (ballX_ark <= BALL_SIZE_ark/2 || ballX_ark >= 127 - BALL_SIZE_ark/2) {
+        ballSpeedX_ark = -ballSpeedX_ark;
+    }
+    if (ballY_ark <= BALL_SIZE_ark/2) {
+        ballSpeedY_ark = -ballSpeedY_ark;
+    }
+
+    // Проверка столкновения с платформой
+    if (ballY_ark + BALL_SIZE_ark/2 >= 60 && 
+        ballY_ark - BALL_SIZE_ark/2 <= 60 + PADDLE_HEIGHT_ark &&
+        ballX_ark + BALL_SIZE_ark/2 >= paddleX && 
+        ballX_ark - BALL_SIZE_ark/2 <= paddleX + PADDLE_WIDTH_ark) {
+        
+        // Угол отскока зависит от места удара
+        int hitPos = (ballX_ark - paddleX) - PADDLE_WIDTH_ark/2;
+        ballSpeedX_ark = constrain(hitPos / 3, -2, 2);
+        ballSpeedY_ark = -abs(ballSpeedY_ark);
+    }
+
+    // Проверка столкновения с кирпичами
+    for (int row = 0; row < BRICK_ROWS; row++) {
+        for (int col = 0; col < BRICK_COLS; col++) {
+            if (bricks[row][col]) {
+                int brickX = col * (BRICK_WIDTH + BRICK_SPACING);
+                int brickY = row * (BRICK_HEIGHT + BRICK_SPACING) + 5;
+                
+                if (ballX_ark + BALL_SIZE_ark/2 > brickX && 
+                    ballX_ark - BALL_SIZE_ark/2 < brickX + BRICK_WIDTH &&
+                    ballY_ark + BALL_SIZE_ark/2 > brickY && 
+                    ballY_ark - BALL_SIZE_ark/2 < brickY + BRICK_HEIGHT) {
+                    
+                    bricks[row][col] = false;
+                    score += 10;
+                    
+                    // Определяем сторону столкновения
+                    int overlapLeft = (ballX_ark + BALL_SIZE_ark/2) - brickX;
+                    int overlapRight = (brickX + BRICK_WIDTH) - (ballX_ark - BALL_SIZE_ark/2);
+                    int overlapTop = (ballY_ark + BALL_SIZE_ark/2) - brickY;
+                    int overlapBottom = (brickY + BRICK_HEIGHT) - (ballY_ark - BALL_SIZE_ark/2);
+                    
+                    // Находим минимальное перекрытие
+                    int minOverlap = min(min(overlapLeft, overlapRight), min(overlapTop, overlapBottom));
+                    
+                    if (minOverlap == overlapLeft || minOverlap == overlapRight) {
+                        ballSpeedX_ark = -ballSpeedX_ark;
+                    } else {
+                        ballSpeedY_ark = -ballSpeedY_ark;
+                    }
+                }
+            }
+        }
+    }
+    // Проверка проигрыша жизни
+    if (ballY_ark >= 64) {
+        lives--;
+        if (lives > 0) {
+            ballX_ark = random(20, 108);
+            ballY_ark = 40;
+            paddleX = (128 - PADDLE_WIDTH_ark) / 2;
+            ballSpeedX_ark = random(0, 2) ? 1 : -1;
+            ballSpeedY_ark = -1;
+        } else {
+            gameRunning = false;
+        }
+    }
+}
+
+bool allBricksDestroyed() {
+    for (int row = 0; row < BRICK_ROWS; row++) {
+        for (int col = 0; col < BRICK_COLS; col++) {
+            if (bricks[row][col]) return false;
+        }
+    }
+    return true;
+}
+
+void drawGameStats() {
+    oled.setCursor(0, 0);
+    oled.print("Жизни:");
+    oled.print(lives);
+    oled.setCursor(70, 0);
+    oled.print("Очки:");
+    oled.print(score);
+}
+
+void arkanoidGame() {
+    initArkanoid();
+    
+    while (true) {
+        buttons_tick();
+        
+        // Управление платформой
+        if (left.isStep() or left.isClick()) {
+            paddleX = constrain(paddleX - 3, 0, 128 - PADDLE_WIDTH_ark);
+        }
+        if (right.isStep() or right.isClick()) {
+            paddleX = constrain(paddleX + 3, 0, 128 - PADDLE_WIDTH_ark);
+        }
+        
+        // Выход из игры
+        if (ok.isHold()) {
+            exit_without_update();
+            left.setStepTimeout(400);
+            right.setStepTimeout(400);
+            return;
+        }
+        
+        if (gameRunning) {
+            moveBall();
+            
+            // Проверка победы
+            if (allBricksDestroyed()) {
+                gameRunning = false;
+            }
+            
+            // Отрисовка
+            oled.clear();
+            drawGameStats();
+            drawBricks();
+            drawPaddle();
+            drawBall_ark();
+            oled.update();
+        } else {
+            // Экран окончания игры
+            oled.clear();
+            oled.setScale(2);
+            
+            if (lives > 0) {
+                oled.setCursorXY(25, 20);
+                oled.print("ПОБЕДА!");
+            } else {
+                oled.setCursorXY(15, 20);
+                oled.print("ПРОИГРЫШ");
+                
+            }
+            
+            oled.setScale(1);
+            oled.setCursor(30, 6);
+            oled.print("Очки: ");
+            oled.print(score);
+            
+            oled.setCursor(10, 7);
+            oled.print("OK - меню  <-Играть");
+            oled.update();
+            
+            // Обработка выбора после игры
+            while (true) {
+                buttons_tick();
+                if (ok.isClick()) {
+                    exit_without_update();
+                    left.setStepTimeout(400);
+                    right.setStepTimeout(400);
+                    return;
+                }
+                if (left.isClick()) {
+                    initArkanoid();
+                    break;
+                }
+            }
+        }
+        
+        delay(20);
+    }
+}
 void mini_apps_menu() {
   setCpuFrequencyMhz(240);
   const char* mini_apps_pages[][6] = {
@@ -2485,7 +2697,7 @@ void mini_apps_menu() {
     },
     { // Страница 2
       "Flappy Bird",
-      "",
+      "Арконоид",
       "",
       "<- Пред.стр",
       "",
@@ -2565,7 +2777,7 @@ void mini_apps_menu() {
       else if(current_page == 1) {
         switch(mini_apps_ptr) {
           case 0: flappyGame(); break;
-          case 1: break;
+          case 1: arkanoidGame(); break;
           case 2: break;
           case 3: current_page--; mini_apps_ptr = 0; break; // Возврат на пред. страницу
           case 4: break;
