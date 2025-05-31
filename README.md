@@ -1,5 +1,5 @@
 # CatOS Прошивка игровой консоли
-| *> CatOs Pro <* | [CatOs Lite](https://github.com/CatDevCode/CatOs_Lite/) |
+| *> CatOs <* | [CatOs Lite](https://github.com/CatDevCode/CatOs_Lite/) |
 | --- | --- |
 
 ![LOGO](assets/logo.jpg)
