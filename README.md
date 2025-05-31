@@ -22,10 +22,9 @@
 
 ## PCB
 - Ссылка на проект [EasyEDA](https://oshwlab.com/oleggator2013/catos_catdevcode)
-<img src="assets/pcb1.jpg" width="600" height="350" alt="LogoPCB">
-<img src="assets/pcb2.jpg" width="600" height="350" alt="LogoPCB">
-<img src="assets/pcb_with_components.jpg" width="600" height="600" alt="LogoPCB">
-
+![PCB1](assets/pcb1.jpg)
+![PCB2](assets/pcb2.jpg)
+![PCB3](assets/pcb_with_components.jpg)
 
 ## Создание изображений и загрузка
 1. Запустите [imageProcessor.exe](https://github.com/AlexGyver/imageProcessor) (установите java)
