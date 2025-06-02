@@ -15,6 +15,7 @@
 #include <SettingsGyver.h>  // либа веб морды
 #include <GyverTimer.h>     // Либа таймера
 #include <Random16.h>       // умный рандом
+#include <map>
 #include "tetris.h"         // переменные для тетриса
 #include "bitmaps_oled.h"   // битмапы
 #include "menu_oled.h"      // переменные для меню
@@ -739,6 +740,13 @@ void servmode() {
     }
   }
 }
+uint32_t generateSeed() {
+    uint32_t seed = 0;
+    seed ^= getBattery();
+    seed ^= millis();
+    seed ^= esp_random(); // Используйте аппаратный генератор
+    return seed;
+}
 void setup() {
     Serial.begin(115200);
     oled.init(); 
@@ -766,8 +774,9 @@ void setup() {
     drawStaticMenu();
     updatePointer();
     pinMode(FREE_PIN, OUTPUT);
-    rnd.setSeed(getBattery() + getVoltage() / micros());
-    randomSeed(getBattery() + getVoltage() / micros());
+    uint32_t seed = generateSeed();
+    rnd.setSeed(seed);
+    randomSeed(seed);
     setCpuFrequencyMhz(80);
 }
 
@@ -1620,7 +1629,7 @@ int getFilesCount() {
   File file = root.openNextFile();
   while (file) {
     String filename = file.name();
-    if (filename.endsWith(".txt") || filename.endsWith(".h")) {
+    if (filename.endsWith(".txt") || filename.endsWith(".h") || filename.endsWith(".catos")) {
       count++;
     }
     file.close();
@@ -1636,7 +1645,7 @@ String getFilenameByIndex(int idx) {
   File file = root.openNextFile();
   while (file) {
     String filename = file.name();
-    if (filename.endsWith(".txt") || filename.endsWith(".h")) {
+    if (filename.endsWith(".txt") || filename.endsWith(".h") || filename.endsWith(".catos")) {
       if (i == idx) {
         String name = "/" + filename;
         file.close();
@@ -1855,15 +1864,320 @@ void enterToReadTxtFile(String filename){
   }
 }
 
+// ========================= CAT OS SCRIPT ================================
+void runCatosApp(String filename) {
+  File file = LittleFS.open(filename, "r");
+  if (!file) {
+    oled.clear();
+    oled.setCursor(0, 3);
+    oled.print("Ошибка открытия");
+    oled.update();
+    delay(2000);
+    return;
+  }
+
+  resetButtons();
+  oled.clear();
+  oled.setScale(1);
+  
+  String cmd;
+  String arg1, arg2;
+  bool inLoop = false;
+  int loopStart = 0;
+
+  struct VarValue {
+    enum { BOOL, INT } type;
+    union {
+      bool bVal;
+      int iVal;
+    };
+    VarValue() : type(INT), iVal(0) {}
+  };
+
+  std::map<String, VarValue> variables;
+
+  while (file.available()) {
+    String line = file.readStringUntil('\n');
+    line.trim();
+    
+    if (line.length() == 0 || line.startsWith("//")) continue;
+
+    int space1 = line.indexOf(' ');
+    cmd = (space1 == -1) ? line : line.substring(0, space1);
+    cmd.toLowerCase();
+
+    String rest = (space1 == -1) ? "" : line.substring(space1 + 1);
+        if (cmd == "var") {
+      // Объявление переменной
+      // Формат: var <type> <name>
+      int space2 = rest.indexOf(' ');
+      if(space2 == -1) continue; // Ошибка синтаксиса
+      String typeStr = rest.substring(0, space2);
+      String varName = rest.substring(space2 + 1);
+      varName.trim();
+      typeStr.toLowerCase();
+
+      if (variables.find(varName) != variables.end()) {
+        // Переменная уже объявлена - можно вывести ошибку или пропустить
+        continue;
+      }
+
+      VarValue v;
+      if (typeStr == "bool") {
+        v.type = VarValue::BOOL;
+        v.bVal = false;
+      } else if (typeStr == "int") {
+        v.type = VarValue::INT;
+        v.iVal = 0;
+      } else {
+        // Неизвестный тип
+        continue;
+      }
+      variables[varName] = v;
+    }
+    else if (cmd == "set") {
+      // Формат: set <varName> <value>
+      int space2 = rest.indexOf(' ');
+      if(space2 == -1) continue;
+      String varName = rest.substring(0, space2);
+      String valueStr = rest.substring(space2 + 1);
+      varName.trim();
+      valueStr.trim();
+
+      auto it = variables.find(varName);
+      if (it == variables.end()) continue; // Переменная не найдена
+
+      VarValue &v = it->second;
+      if (v.type == VarValue::BOOL) {
+        // Принять "true"/"false" или "1"/"0"
+        valueStr.toLowerCase();
+        if (valueStr == "true" || valueStr == "1") v.bVal = true;
+        else if (valueStr == "false" || valueStr == "0") v.bVal = false;
+      } else if (v.type == VarValue::INT) {
+        v.iVal = valueStr.toInt();
+      }
+    }
+    else if (cmd == "get") {
+      // Формат: get <varName>
+      String varName = rest;
+      varName.trim();
+
+      auto it = variables.find(varName);
+      if (it == variables.end()) continue; // Переменная не найдена
+
+      VarValue &v = it->second;
+      oled.setCursor(0, 0); // текущая строка
+      if (v.type == VarValue::BOOL) {
+        oled.print(varName + ": " + (v.bVal ? "true" : "false"));
+      } else if (v.type == VarValue::INT) {
+        oled.print(varName + ": " + String(v.iVal));
+      }
+     }
+    else if (cmd == "add") {
+      // Формат: add <varName> <value>
+      int space2 = rest.indexOf(' ');
+      if(space2 == -1) continue;
+      String varName = rest.substring(0, space2);
+      String valueStr = rest.substring(space2 + 1);
+      varName.trim();
+      valueStr.trim();
+      
+      auto it = variables.find(varName);
+      if (it == variables.end()) continue; // Переменная не найдена
+
+      VarValue &v = it->second;
+      if (v.type == VarValue::INT) {
+        v.iVal += valueStr.toInt();
+      }
+    }
+    else if (cmd == "sub") {
+      // Формат: sub <varName> <value>
+      int space2 = rest.indexOf(' ');
+      if(space2 == -1) continue;
+      String varName = rest.substring(0, space2);
+      String valueStr = rest.substring(space2 + 1);
+      varName.trim();
+      valueStr.trim();
+
+      auto it = variables.find(varName);
+      if (it == variables.end()) continue; // Переменная не найдена
+
+      VarValue &v = it->second;
+      if (v.type == VarValue::INT) {
+        v.iVal -= valueStr.toInt();
+      }
+    }
+    else if (cmd == "mul") {
+      // Формат: mul <varName> <value>
+      int space2 = rest.indexOf(' ');
+      if(space2 == -1) continue;
+      String varName = rest.substring(0, space2);
+      String valueStr = rest.substring(space2 + 1);
+      varName.trim();
+      valueStr.trim();
+
+      auto it = variables.find(varName);
+      if (it == variables.end()) continue; // Переменная не найдена
+
+      VarValue &v = it->second;
+      if (v.type == VarValue::INT) {
+        v.iVal *= valueStr.toInt();
+      }
+    }
+    else if (cmd == "div") {
+      // Формат: div <varName> <value>
+      int space2 = rest.indexOf(' ');
+      if(space2 == -1) continue;
+      String varName = rest.substring(0, space2);
+      String valueStr = rest.substring(space2 + 1);
+      varName.trim();
+      valueStr.trim();
+
+      auto it = variables.find(varName);
+      if (it == variables.end()) continue; // Переменная не найдена
+
+      VarValue &v = it->second;
+      if (v.type == VarValue::INT) {
+        int divisor = valueStr.toInt();
+        if (divisor != 0) {
+          v.iVal /= divisor;
+        } else {
+          // Обработка деления на ноль (можно вывести ошибку или игнорировать)
+          continue; // Игнорируем операцию
+        }
+      }
+    }
+    else if (cmd == "printvar") {
+      // Формат: printvar <varName>
+      String varName = rest;
+      varName.trim();
+
+      auto it = variables.find(varName);
+      if (it == variables.end()) continue; // Переменная не найдена
+
+      VarValue &v = it->second;
+      if (v.type == VarValue::BOOL) {
+        oled.print(v.bVal ? "true" : "false");
+      } else if (v.type == VarValue::INT) {
+        oled.print(String(v.iVal));
+      }
+    }
+    else if (cmd == "rnd") {
+      // Формат: rnd <varName> <min> <max>
+      int space1 = rest.indexOf(' ');
+      if(space1 == -1) continue; 
+      String varName = rest.substring(0, space1);
+      String rangeStr = rest.substring(space1 + 1);
+      varName.trim();
+      rangeStr.trim();
+
+      int space2 = rangeStr.indexOf(' ');
+      if(space2 == -1) continue; 
+      String minStr = rangeStr.substring(0, space2);
+      String maxStr = rangeStr.substring(space2 + 1);
+      
+      int min = minStr.toInt();
+      int max = maxStr.toInt();
+
+
+      int randomValue = rnd.get(min, max); 
+
+      VarValue v;
+      v.type = VarValue::INT;
+      v.iVal = randomValue;
+
+      variables[varName] = v; 
+    }
+
+    // Основные команды
+    else if (cmd == "print") {
+      String text = line.substring(space1 + 1);
+      oled.print(text);
+    }
+    
+    else if (cmd == "serial.print") {
+      String text = line.substring(space1 + 1);
+      Serial.print(text);
+    }
+    else if (cmd == "serial.println") {
+      String text = line.substring(space1 + 1);
+      Serial.println(text);
+    }
+    else if (cmd == "printBattery") {
+      oled.print(getBattery());
+    }
+    else if (cmd == "setcursor") {
+      int space2 = line.indexOf(' ', space1 + 1);
+      arg1 = line.substring(space1 + 1, space2);
+      arg2 = line.substring(space2 + 1);
+      oled.setCursor(arg1.toInt(), arg2.toInt());
+    }
+    else if (cmd == "clear") {
+      oled.clear();
+    }
+    else if (cmd == "drawbattery") {
+      drawbattery();
+    }
+    else if (cmd == "update") {
+      oled.update();
+    }
+    else if (cmd == "loop") {
+      inLoop = true;
+      loopStart = file.position();
+      continue;
+    }
+    else if (cmd == "endloop") {
+      if (inLoop) file.seek(loopStart);
+      continue;
+    }
+    else if (cmd == "delay") {
+      arg1 = line.substring(space1 + 1);
+      delay(arg1.toInt());
+    }
+    else if (cmd == "exit") {
+      break;
+    }
+
+    // Проверка кнопок
+    buttons_tick();
+    // Обработка условий
+    if (cmd == "ifbtn") {
+      int space2 = line.indexOf(' ', space1 + 1);
+      String buttonName = line.substring(space1 + 1, space2);
+      String action = line.substring(space2 + 1);
+      
+      bool condition = false;
+      if (buttonName == "up") condition = (action == "click") ? up.isClick() : up.isHold();
+      else if (buttonName == "down") condition = (action == "click") ? down.isClick() : down.isHold();
+      else if (buttonName == "left") condition = (action == "click") ? left.isClick() : left.isHold();
+      else if (buttonName == "right") condition = (action == "click") ? right.isClick() : right.isHold();
+      else if (buttonName == "ok") condition = (action == "click") ? ok.isClick() : ok.isHold();
+      
+      if (!condition) {
+        // Пропускаем следующие команды до endif
+        while (file.available()) {
+          String skipLine = file.readStringUntil('\n');
+          skipLine.trim();
+          if (skipLine == "endif") break;
+        }
+      }
+    }
+  }
+  
+  file.close();
+  resetButtons();
+  files = getFilesCount(); drawMainMenu();
+  return;
+}
 void enterToReadFile(void) { 
   setCpuFrequencyMhz(240);
   String filename = getFilenameByIndex(cursor);
   if (filename.endsWith(".h")) {
     enterToReadBmpFile(filename);
   } else if(filename.endsWith(".txt")) {
-    // Вызов существующей функции для текстовых файлов
     enterToReadTxtFile(filename);
-  } else {
+  } else if(filename.endsWith(".catos")) {
+    runCatosApp(filename);
   }                
 }
 void ShowFilesLittleFS() {
