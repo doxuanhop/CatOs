@@ -2113,13 +2113,11 @@ void runCatosApp(String filename) {
       // Определяем, является ли rightStr именем переменной
       auto itRight = variables.find(rightStr);
     
-      // Получаем значение правого операнда
       int rightIntVal = 0;
       bool rightBoolVal = false;
       bool rightIsBool = false;
     
       if (itRight != variables.end()) {
-        // Правый операнд — переменная
         VarValue &vr = itRight->second;
         if (vr.type == VarValue::INT) {
           rightIntVal = vr.iVal;
@@ -2129,8 +2127,6 @@ void runCatosApp(String filename) {
           rightIsBool = true;
         }
       } else {
-        // Правый операнд — литерал
-        // Попробуем распознать булевое значение
         String lowerRight = rightStr;
         lowerRight.toLowerCase();
         if (lowerRight == "true") {
@@ -2145,7 +2141,6 @@ void runCatosApp(String filename) {
         }
       }
     
-      // Выполняем сравнение в зависимости от типа левого операнда
       if (v.type == VarValue::INT && !rightIsBool) {
         int leftVal = v.iVal;
         int rightVal = rightIntVal;
@@ -2159,14 +2154,11 @@ void runCatosApp(String filename) {
         bool leftVal = v.bVal;
         bool rightVal = rightBoolVal;
         if (op == "=" || op == "==") conditionMet = (leftVal == rightVal);
-        // Можно добавить другие операторы для bool, если нужно
       } else {
-        // Несовместимые типы — считаем условие ложным
-        conditionMet = false;
+        conditionMet = false; // Несовместимые типы
       }
     
       if (!conditionMet) {
-        // Пропускаем до endif
         while (file.available()) {
           String skipLine = file.readStringUntil('\n');
           skipLine.trim();
