@@ -1907,7 +1907,7 @@ void runCatosApp(String filename) {
     cmd.toLowerCase();
 
     String rest = (space1 == -1) ? "" : line.substring(space1 + 1);
-        if (cmd == "var") {
+    if (cmd == "var") {
       // Объявление переменной
       // Формат: var <type> <name>
       int space2 = rest.indexOf(' ');
@@ -2088,6 +2088,92 @@ void runCatosApp(String filename) {
 
       variables[varName] = v; 
     }
+    else if (cmd == "if") {
+      // Формат: if <varName> <operator> <valueOrVar>
+      int space2 = rest.indexOf(' ');
+      if(space2 == -1) continue;
+      String varName = rest.substring(0, space2);
+      String conditionStr = rest.substring(space2 + 1);
+      varName.trim();
+      conditionStr.trim();
+    
+      auto it = variables.find(varName);
+      if (it == variables.end()) continue; // Переменная не найдена
+    
+      VarValue &v = it->second;
+      bool conditionMet = false;
+    
+      // Получаем оператор и значение/переменную
+      int space3 = conditionStr.indexOf(' ');
+      if(space3 == -1) continue; // Ошибка синтаксиса
+      String op = conditionStr.substring(0, space3);
+      String rightStr = conditionStr.substring(space3 + 1);
+      rightStr.trim();
+    
+      // Определяем, является ли rightStr именем переменной
+      auto itRight = variables.find(rightStr);
+    
+      // Получаем значение правого операнда
+      int rightIntVal = 0;
+      bool rightBoolVal = false;
+      bool rightIsBool = false;
+    
+      if (itRight != variables.end()) {
+        // Правый операнд — переменная
+        VarValue &vr = itRight->second;
+        if (vr.type == VarValue::INT) {
+          rightIntVal = vr.iVal;
+          rightIsBool = false;
+        } else if (vr.type == VarValue::BOOL) {
+          rightBoolVal = vr.bVal;
+          rightIsBool = true;
+        }
+      } else {
+        // Правый операнд — литерал
+        // Попробуем распознать булевое значение
+        String lowerRight = rightStr;
+        lowerRight.toLowerCase();
+        if (lowerRight == "true") {
+          rightBoolVal = true;
+          rightIsBool = true;
+        } else if (lowerRight == "false") {
+          rightBoolVal = false;
+          rightIsBool = true;
+        } else {
+          rightIntVal = rightStr.toInt();
+          rightIsBool = false;
+        }
+      }
+    
+      // Выполняем сравнение в зависимости от типа левого операнда
+      if (v.type == VarValue::INT && !rightIsBool) {
+        int leftVal = v.iVal;
+        int rightVal = rightIntVal;
+      
+        if (op == "=" || op == "==") conditionMet = (leftVal == rightVal);
+        else if (op == "<") conditionMet = (leftVal < rightVal);
+        else if (op == ">") conditionMet = (leftVal > rightVal);
+        else if (op == "<=") conditionMet = (leftVal <= rightVal);
+        else if (op == ">=") conditionMet = (leftVal >= rightVal);
+      } else if (v.type == VarValue::BOOL && rightIsBool) {
+        bool leftVal = v.bVal;
+        bool rightVal = rightBoolVal;
+        if (op == "=" || op == "==") conditionMet = (leftVal == rightVal);
+        // Можно добавить другие операторы для bool, если нужно
+      } else {
+        // Несовместимые типы — считаем условие ложным
+        conditionMet = false;
+      }
+    
+      if (!conditionMet) {
+        // Пропускаем до endif
+        while (file.available()) {
+          String skipLine = file.readStringUntil('\n');
+          skipLine.trim();
+          if (skipLine == "endif") break;
+        }
+      }
+    }
 
     // Основные команды
     else if (cmd == "print") {
@@ -2158,7 +2244,7 @@ void runCatosApp(String filename) {
         while (file.available()) {
           String skipLine = file.readStringUntil('\n');
           skipLine.trim();
-          if (skipLine == "endif") break;
+          if (skipLine == "endifbtn") break;
         }
       }
     }
