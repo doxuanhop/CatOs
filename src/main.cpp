@@ -744,7 +744,8 @@ uint32_t generateSeed() {
     uint32_t seed = 0;
     seed ^= getBattery();
     seed ^= millis();
-    seed ^= esp_random(); // Используйте аппаратный генератор
+    seed ^= esp_random();
+    seed ^= analogRead(27);
     return seed;
 }
 void setup() {
@@ -755,6 +756,7 @@ void setup() {
     Wire.setClock(800000L);
     ok.tick();
     analogReadResolution(ADC_RESOLUTION);
+    analogReadResolution(27);
     #ifdef ESP32
       LittleFS.begin(true);
     #else
