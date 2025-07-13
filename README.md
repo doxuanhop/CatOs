@@ -1,97 +1,66 @@
-# CatOS Прошивка игровой консоли
-| *> CatOs <* | [CatOs Lite](https://github.com/CatDevCode/CatOs_Lite/) |
+# CatOS – Firmware cho máy chơi game cầm tay
+| *> CatOS <* | [CatOS Lite](https://github.com/CatDevCode/CatOs_Lite/) |
 | --- | --- |
 
 ![LOGO](assets/logo.jpg)
 
-Прошивка для портативной игровой консоли на базе ESP32 с OLED-дисплеем. Включает набор игр, утилит и системных инструментов.
+Firmware dành cho máy chơi game cầm tay dựa trên ESP32 với màn hình OLED. Bao gồm nhiều trò chơi, tiện ích và công cụ hệ thống.
 
-## Особенности
-- 🕹️ Игры: Тетрис, Змейка, Flappy Bird, Ардуино дино, Понг, Арнакоид
-- ⚙️ Системные настройки через веб-интерфейс
-- 📶 Поддержка WiFi (STA и AP режимы)
-- 📖 Файловый менеджер для LittleFS
-- 🛠️ Сервисное меню с калибровкой
-- 🧮 Встроенный калькулятор
-- ⏱️ Секундомер и таймер
+## Tính năng nổi bật
+- 🕹️ Trò chơi: Tetris, Rắn săn mồi, Flappy Bird, Arduino Dino, Pong, Arkanoid
+- ⚙️ Cài đặt hệ thống qua giao diện web
+- 📶 Hỗ trợ WiFi (chế độ STA và AP)
+- 📖 Trình quản lý tệp cho hệ thống tệp LittleFS
+- 🛠️ Menu dịch vụ với chức năng hiệu chỉnh (calibration)
+- 🧮 Máy tính cầm tay tích hợp
+- ⏱️ Đồng hồ bấm giờ và hẹn giờ
 
-## Компоненты
-- Микроконтроллер ESP32
-- OLED дисплей 128x64 (SPI, 7 pins)
-- 5 кнопок управления
-- Литий-ионный аккумулятор
+## Linh kiện sử dụng
+- Vi điều khiển ESP32
+- Màn hình OLED 128x64 (SPI, 7 chân)
+- 5 nút điều khiển
+- Pin lithium-ion
 
-## [МОЖНО ПРОШИТЬ ESP32 НА МОЁМ САЙТЕ](https://catdevcode.github.io/CatOs_webflasher/)
+## [CÓ THỂ NẠP FIRMWARE ESP32 TẠI TRANG NÀY](https://catdevcode.github.io/CatOs_webflasher/)
 
-## Простой для DIY
-1. Схема подключения
+## Dễ dàng cho dự án DIY
+### 1. Sơ đồ kết nối
+![Sơ đồ kết nối](https://github.com/CatDevCode/CatOs/blob/main/assets/sheme_catos.png)
 
-![scheme_CATOS](https://github.com/CatDevCode/CatOs/blob/main/assets/sheme_catos.png)
+### 2. Sơ đồ cấp nguồn
+![Sơ đồ nguồn](https://github.com/CatDevCode/CatOs/blob/main/assets/bat.png)
 
-2. Схема питания
+> 💡 **MẸO:** Sử dụng điện trở 100 kΩ
 
-![scheme_bat_CATOS](https://github.com/CatDevCode/CatOs/blob/main/assets/bat.png)
-
-> [!TIP]
-> Резисторы на 100 kOm
 ## PCB
-- Ссылка на проект [EasyEDA](https://oshwlab.com/oleggator2013/catos_catdevcode)
-![PCB1](assets/pcb1.jpg)
-![PCB2](assets/pcb2.jpg)
+- Dự án trên [EasyEDA](https://oshwlab.com/oleggator2013/catos_catdevcode)
+
+![PCB1](assets/pcb1.jpg)  
+![PCB2](assets/pcb2.jpg)  
 ![PCB3](assets/pcb_with_components.jpg)
 
-## Создание изображений и загрузка
-1. Запустите [imageProcessor.exe](https://github.com/AlexGyver/imageProcessor) (установите java)
+## Tạo và tải hình ảnh
+1. Mở công cụ [imageProcessor.exe](https://github.com/AlexGyver/imageProcessor) (yêu cầu cài đặt Java)
 
 ![IMG1](assets/img1.png)
 
-2. Откройте изображение
-
+2. Mở hình ảnh bạn muốn chuyển đổi  
 ![IMG2](assets/img2.png)
 
-3. Настройте размер и порог изображения для получения лучшего результата
-
+3. Điều chỉnh kích thước và ngưỡng ảnh để có kết quả tốt nhất  
 ![IMG3](assets/img3.png)
 
-4. Сделайте инверсию цвета (белый цвет будет отображаться на экране). И убедитесь что Result height и Result width стоят также как на изображении
-
+4. Đảo màu (trắng là màu hiển thị trên màn hình) và đảm bảo chiều cao & rộng giống hình  
 ![IMG4](assets/img4.png)
 
-5. Сохраните файл нажав SAVE, в папке image-processor появится файл .h . Также можно переименовать этот файл.
-
+5. Nhấn **SAVE**, tệp `.h` sẽ xuất hiện trong thư mục `image-processor`. Bạn có thể đổi tên nếu cần.  
 ![IMG5](assets/img5.png)
 
-## Библиотеки
-- [GyverOled](https://github.com/GyverLibs/GyverOLED/)
-- [GyverButton(Старое, но работает отлично)](https://github.com/GyverLibs/GyverButton)
-- [GyverTimer(Старое, но для совместимости)](https://github.com/GyverLibs/GyverTimer)
+## Thư viện sử dụng
+- [GyverOLED](https://github.com/GyverLibs/GyverOLED/)
+- [GyverButton (cũ nhưng hoạt động tốt)](https://github.com/GyverLibs/GyverButton)
+- [GyverTimer (cũ nhưng để tương thích)](https://github.com/GyverLibs/GyverTimer)
 - [Settings](https://github.com/GyverLibs/Settings)
 - [Random16](https://github.com/GyverLibs/Random16)
-- PS. Все библиотеки от гайвера
 
-## Установка
-1. Установите [PlatformIO](https://platformio.org/)
-```bash
-pip install platformio
-```
-2. Клонируйте репозиторий:
-```bash
-git clone https://github.com/CatDevCode/CatOs.git
-```
-3. Перейдите в папку с проектом:
-```bash
-cd CatOs
-```
-4. Сбилдите проект
-```bash
-pio run
-```
-5. Загрузите проект на ESP32
-```bash
-pio run --target upload 
-```
-## Кредиты
-- Спасибо [Алексу Гайверу](https://github.com/GyverLibs/) за библиотеки ❤
-- Спасибо проекту [MicroReader](https://github.com/Nich1con/microReader/) за некоторые функции и игры.
-## Проект открыт для Pull-реквестов
-## Сделано с любовью ❤
+> 📌 **Ghi chú:** Tất cả các thư viện đều từ Gyver
